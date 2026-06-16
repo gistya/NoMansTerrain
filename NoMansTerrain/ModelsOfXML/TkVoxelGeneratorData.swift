@@ -82,7 +82,7 @@ struct BaseSeed: Codable, Equatable {
         self.seed = seed
     }
 
-    init(from decoder: Decoder) throws {
+    init(from decoder: any Decoder) throws {
         struct GcSeed: Decodable {
             var seed: Int
             enum CodingKeys: String, CodingKey { case seed = "Seed" }
@@ -109,7 +109,7 @@ struct BaseSeed: Codable, Equatable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if let seed {
             try container.encode(seed)

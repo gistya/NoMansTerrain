@@ -44,6 +44,7 @@ struct SuperFormulaMetalView: UIViewRepresentable {
 #endif
 
 extension SuperFormulaMetalView {
+    @MainActor
     final class Coordinator: NSObject {
         let renderer = SuperFormulaMetalRenderer()
         private var lastMeshSignature = ""

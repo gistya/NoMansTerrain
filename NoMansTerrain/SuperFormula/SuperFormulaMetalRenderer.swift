@@ -60,13 +60,13 @@ final class SuperFormulaMetalRenderer: NSObject, MTKViewDelegate {
         return float4(color, 1.0);
     }
     """
-    private let device: MTLDevice
-    private let commandQueue: MTLCommandQueue
-    private let pipelineState: MTLRenderPipelineState
-    private let depthState: MTLDepthStencilState
+    private let device: any MTLDevice
+    private let commandQueue: any MTLCommandQueue
+    private let pipelineState: any MTLRenderPipelineState
+    private let depthState: any MTLDepthStencilState
 
-    private var vertexBuffer: MTLBuffer?
-    private var indexBuffer: MTLBuffer?
+    private var vertexBuffer: (any MTLBuffer)?
+    private var indexBuffer: (any MTLBuffer)?
     private var indexCount = 0
 
     var cameraAzimuth: Float = 0.6
@@ -82,7 +82,7 @@ final class SuperFormulaMetalRenderer: NSObject, MTKViewDelegate {
         self.device = device
         self.commandQueue = commandQueue
 
-        let library: MTLLibrary
+        let library: any MTLLibrary
         do {
             library = try device.makeLibrary(source: Self.shaderSource, options: nil)
         } catch {

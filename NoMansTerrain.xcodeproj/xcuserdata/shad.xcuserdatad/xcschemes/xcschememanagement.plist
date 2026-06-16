@@ -4,10 +4,28 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>Nah Bruh's Terrain.xcscheme_^#shared#^_</key>
+		<key>NoMansTerrain.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>7385C4FC2FE03E28005780E2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7385C50D2FE03E2A005780E2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7385C5172FE03E2A005780E2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

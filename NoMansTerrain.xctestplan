@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "1C77FAA0-82A6-4F08-B6C1-35E8864E36D2",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:NoMansTerrain.xcodeproj",
+      "identifier" : "7385C4FC2FE03E28005780E2",
+      "name" : "NoMansTerrain"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:NoMansTerrain.xcodeproj",
+        "identifier" : "7385C50D2FE03E2A005780E2",
+        "name" : "NoMansTerrainTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:NoMansTerrain.xcodeproj",
+        "identifier" : "7385C5172FE03E2A005780E2",
+        "name" : "NoMansTerrainUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

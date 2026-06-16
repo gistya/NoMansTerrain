@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct Nah_Bruh_s_TerrainApp: App {
+struct NoMansTerrainApp: App {
     var body: some Scene {
         WindowGroup {
             SuperFormulaEditorView()
