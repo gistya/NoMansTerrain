@@ -8,6 +8,8 @@
 import SwiftUI
 import SwiftData
 
+var y: _SwiftContext? = nil
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Item]

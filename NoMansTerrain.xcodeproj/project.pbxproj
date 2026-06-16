@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7385C6362FE03EBD005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6352FE03EBD005780E2 /* Hastings */; };
+		7385C6382FE03EC4005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6372FE03EC4005780E2 /* Hastings */; };
+		7385C63A2FE03EC8005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6392FE03EC8005780E2 /* Hastings */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7385C50F2FE03E2A005780E2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,38 +30,67 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		7385C4FD2FE03E28005780E2 /* Nah Bruh's Terrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Nah Bruh's Terrain.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7385C50E2FE03E2A005780E2 /* Nah Bruh's TerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Nah Bruh's TerrainTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7385C5182FE03E2A005780E2 /* Nah Bruh's TerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Nah Bruh's TerrainUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		737C9E102FE0A00C0041405F /* voxelgeneratorsettings.MXML */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = voxelgeneratorsettings.MXML; path = ../nms_terrain/voxelgeneratorsettings.MXML; sourceTree = "<group>"; };
+		7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoMansTerrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7385C6332FE03E89005780E2 /* hastings */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = hastings; path = ../hastings; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7385C5202FE03E2A005780E2 /* Exceptions for "Nah Bruh's Terrain" folder in "Nah Bruh's Terrain" target */ = {
+		737C9F692FE0A0400041405F /* Exceptions for "nms_terrain" folder in "NoMansTerrain" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				.gitignore,
+			);
+			target = 7385C4FC2FE03E28005780E2 /* NoMansTerrain */;
+		};
+		7385C5202FE03E2A005780E2 /* Exceptions for "NoMansTerrain" folder in "NoMansTerrain" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 7385C4FC2FE03E28005780E2 /* Nah Bruh's Terrain */;
+			target = 7385C4FC2FE03E28005780E2 /* NoMansTerrain */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7385C4FF2FE03E28005780E2 /* Nah Bruh's Terrain */ = {
+		737C9D0A2FE09FF20041405F /* nms_terrain */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				7385C5202FE03E2A005780E2 /* Exceptions for "Nah Bruh's Terrain" folder in "Nah Bruh's Terrain" target */,
+				737C9F692FE0A0400041405F /* Exceptions for "nms_terrain" folder in "NoMansTerrain" target */,
 			);
-			path = "Nah Bruh's Terrain";
+			path = nms_terrain;
 			sourceTree = "<group>";
 		};
-		7385C5112FE03E2A005780E2 /* Nah Bruh's TerrainTests */ = {
+		737C9DEE2FE0A0050041405F /* Max */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Nah Bruh's TerrainTests";
+			name = Max;
+			path = ../nms_terrain/Max;
 			sourceTree = "<group>";
 		};
-		7385C51B2FE03E2A005780E2 /* Nah Bruh's TerrainUITests */ = {
+		737C9E0F2FE0A0080041405F /* Min */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Nah Bruh's TerrainUITests";
+			name = Min;
+			path = ../nms_terrain/Min;
+			sourceTree = "<group>";
+		};
+		7385C4FF2FE03E28005780E2 /* NoMansTerrain */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7385C5202FE03E2A005780E2 /* Exceptions for "NoMansTerrain" folder in "NoMansTerrain" target */,
+			);
+			path = NoMansTerrain;
+			sourceTree = "<group>";
+		};
+		7385C5112FE03E2A005780E2 /* NoMansTerrainTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NoMansTerrainTests;
+			sourceTree = "<group>";
+		};
+		7385C51B2FE03E2A005780E2 /* NoMansTerrainUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NoMansTerrainUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -65,6 +100,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7385C6362FE03EBD005780E2 /* Hastings in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +108,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7385C6382FE03EC4005780E2 /* Hastings in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,18 +116,33 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7385C63A2FE03EC8005780E2 /* Hastings in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		737C9DCE2FE09FFA0041405F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				737C9E102FE0A00C0041405F /* voxelgeneratorsettings.MXML */,
+				737C9E0F2FE0A0080041405F /* Min */,
+				737C9DEE2FE0A0050041405F /* Max */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		7385C4F42FE03E28005780E2 = {
 			isa = PBXGroup;
 			children = (
-				7385C4FF2FE03E28005780E2 /* Nah Bruh's Terrain */,
-				7385C5112FE03E2A005780E2 /* Nah Bruh's TerrainTests */,
-				7385C51B2FE03E2A005780E2 /* Nah Bruh's TerrainUITests */,
+				737C9DCE2FE09FFA0041405F /* Resources */,
+				737C9D0A2FE09FF20041405F /* nms_terrain */,
+				7385C6332FE03E89005780E2 /* hastings */,
+				7385C4FF2FE03E28005780E2 /* NoMansTerrain */,
+				7385C5112FE03E2A005780E2 /* NoMansTerrainTests */,
+				7385C51B2FE03E2A005780E2 /* NoMansTerrainUITests */,
+				7385C6342FE03EBD005780E2 /* Frameworks */,
 				7385C4FE2FE03E28005780E2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -98,19 +150,26 @@
 		7385C4FE2FE03E28005780E2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7385C4FD2FE03E28005780E2 /* Nah Bruh's Terrain.app */,
-				7385C50E2FE03E2A005780E2 /* Nah Bruh's TerrainTests.xctest */,
-				7385C5182FE03E2A005780E2 /* Nah Bruh's TerrainUITests.xctest */,
+				7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */,
+				7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */,
+				7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7385C6342FE03EBD005780E2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7385C4FC2FE03E28005780E2 /* Nah Bruh's Terrain */ = {
+		7385C4FC2FE03E28005780E2 /* NoMansTerrain */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7385C5212FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's Terrain" */;
+			buildConfigurationList = 7385C5212FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrain" */;
 			buildPhases = (
 				7385C4F92FE03E28005780E2 /* Sources */,
 				7385C4FA2FE03E28005780E2 /* Frameworks */,
@@ -121,18 +180,20 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				7385C4FF2FE03E28005780E2 /* Nah Bruh's Terrain */,
+				737C9D0A2FE09FF20041405F /* nms_terrain */,
+				7385C4FF2FE03E28005780E2 /* NoMansTerrain */,
 			);
-			name = "Nah Bruh's Terrain";
+			name = NoMansTerrain;
 			packageProductDependencies = (
+				7385C6352FE03EBD005780E2 /* Hastings */,
 			);
 			productName = "Nah Bruh's Terrain";
-			productReference = 7385C4FD2FE03E28005780E2 /* Nah Bruh's Terrain.app */;
+			productReference = 7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */;
 			productType = "com.apple.product-type.application";
 		};
-		7385C50D2FE03E2A005780E2 /* Nah Bruh's TerrainTests */ = {
+		7385C50D2FE03E2A005780E2 /* NoMansTerrainTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7385C5262FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's TerrainTests" */;
+			buildConfigurationList = 7385C5262FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrainTests" */;
 			buildPhases = (
 				7385C50A2FE03E2A005780E2 /* Sources */,
 				7385C50B2FE03E2A005780E2 /* Frameworks */,
@@ -144,18 +205,20 @@
 				7385C5102FE03E2A005780E2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				7385C5112FE03E2A005780E2 /* Nah Bruh's TerrainTests */,
+				737C9D0A2FE09FF20041405F /* nms_terrain */,
+				7385C5112FE03E2A005780E2 /* NoMansTerrainTests */,
 			);
-			name = "Nah Bruh's TerrainTests";
+			name = NoMansTerrainTests;
 			packageProductDependencies = (
+				7385C6372FE03EC4005780E2 /* Hastings */,
 			);
 			productName = "Nah Bruh's TerrainTests";
-			productReference = 7385C50E2FE03E2A005780E2 /* Nah Bruh's TerrainTests.xctest */;
+			productReference = 7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		7385C5172FE03E2A005780E2 /* Nah Bruh's TerrainUITests */ = {
+		7385C5172FE03E2A005780E2 /* NoMansTerrainUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7385C5292FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's TerrainUITests" */;
+			buildConfigurationList = 7385C5292FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrainUITests" */;
 			buildPhases = (
 				7385C5142FE03E2A005780E2 /* Sources */,
 				7385C5152FE03E2A005780E2 /* Frameworks */,
@@ -167,13 +230,15 @@
 				7385C51A2FE03E2A005780E2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				7385C51B2FE03E2A005780E2 /* Nah Bruh's TerrainUITests */,
+				737C9D0A2FE09FF20041405F /* nms_terrain */,
+				7385C51B2FE03E2A005780E2 /* NoMansTerrainUITests */,
 			);
-			name = "Nah Bruh's TerrainUITests";
+			name = NoMansTerrainUITests;
 			packageProductDependencies = (
+				7385C6392FE03EC8005780E2 /* Hastings */,
 			);
 			productName = "Nah Bruh's TerrainUITests";
-			productReference = 7385C5182FE03E2A005780E2 /* Nah Bruh's TerrainUITests.xctest */;
+			productReference = 7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -199,7 +264,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 7385C4F82FE03E28005780E2 /* Build configuration list for PBXProject "Nah Bruh's Terrain" */;
+			buildConfigurationList = 7385C4F82FE03E28005780E2 /* Build configuration list for PBXProject "NoMansTerrain" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -213,9 +278,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7385C4FC2FE03E28005780E2 /* Nah Bruh's Terrain */,
-				7385C50D2FE03E2A005780E2 /* Nah Bruh's TerrainTests */,
-				7385C5172FE03E2A005780E2 /* Nah Bruh's TerrainUITests */,
+				7385C4FC2FE03E28005780E2 /* NoMansTerrain */,
+				7385C50D2FE03E2A005780E2 /* NoMansTerrainTests */,
+				7385C5172FE03E2A005780E2 /* NoMansTerrainUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -271,12 +336,12 @@
 /* Begin PBXTargetDependency section */
 		7385C5102FE03E2A005780E2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7385C4FC2FE03E28005780E2 /* Nah Bruh's Terrain */;
+			target = 7385C4FC2FE03E28005780E2 /* NoMansTerrain */;
 			targetProxy = 7385C50F2FE03E2A005780E2 /* PBXContainerItemProxy */;
 		};
 		7385C51A2FE03E2A005780E2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7385C4FC2FE03E28005780E2 /* Nah Bruh's Terrain */;
+			target = 7385C4FC2FE03E28005780E2 /* NoMansTerrain */;
 			targetProxy = 7385C5192FE03E2A005780E2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -430,7 +495,14 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_ACTOR_ISOLATED_TYPES_USABILITY = YES;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_ISOLATED_CONFORMANCES = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = YES;
 			};
 			name = Debug;
 		};
@@ -485,6 +557,13 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_ACTOR_ISOLATED_TYPES_USABILITY = YES;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_ISOLATED_CONFORMANCES = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = YES;
 			};
 			name = Release;
 		};
@@ -509,7 +588,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Nah Bruh's Terrain.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Nah Bruh's Terrain";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NoMansTerrain.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NoMansTerrain";
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
@@ -535,7 +614,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Nah Bruh's Terrain.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Nah Bruh's Terrain";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NoMansTerrain.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NoMansTerrain";
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
@@ -593,7 +672,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7385C4F82FE03E28005780E2 /* Build configuration list for PBXProject "Nah Bruh's Terrain" */ = {
+		7385C4F82FE03E28005780E2 /* Build configuration list for PBXProject "NoMansTerrain" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7385C5242FE03E2A005780E2 /* Debug */,
@@ -602,7 +681,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7385C5212FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's Terrain" */ = {
+		7385C5212FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrain" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7385C5222FE03E2A005780E2 /* Debug */,
@@ -611,7 +690,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7385C5262FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's TerrainTests" */ = {
+		7385C5262FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrainTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7385C5272FE03E2A005780E2 /* Debug */,
@@ -620,7 +699,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7385C5292FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "Nah Bruh's TerrainUITests" */ = {
+		7385C5292FE03E2A005780E2 /* Build configuration list for PBXNativeTarget "NoMansTerrainUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7385C52A2FE03E2A005780E2 /* Debug */,
@@ -630,6 +709,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7385C6352FE03EBD005780E2 /* Hastings */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Hastings;
+		};
+		7385C6372FE03EC4005780E2 /* Hastings */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Hastings;
+		};
+		7385C6392FE03EC8005780E2 /* Hastings */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Hastings;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7385C4F52FE03E28005780E2 /* Project object */;
 }
