@@ -29,8 +29,9 @@ enum TerrainExportService {
 /// Generates a randomized Min/Max terrain pair for every preset and writes them to
 /// disk in one batch — a "mass dump" of random terrain files for No Man's Sky.
 enum TerrainRandomBatch {
-    /// File name of the combined "big daddy" settings file written at the directory root.
-    static let combinedFileName = "TerrainSettings.xml"
+    /// File name of the combined "big daddy" settings file written at the directory
+    /// root — the name No Man's Sky uses for it.
+    static let combinedFileName = "voxelgeneratorsettings.MXML"
 
     /// Number of presets a full run produces a Min/Max pair for.
     static var presetCount: Int { TerrainPreset.all.count }
