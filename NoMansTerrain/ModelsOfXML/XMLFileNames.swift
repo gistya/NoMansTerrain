@@ -1,5 +1,5 @@
 enum Terrain: CustomStringConvertible, Sendable, Codable {
-    enum Category: String {
+    enum Category: String, Codable, Sendable {
         case standard = ""
         case prime = "Prime"
         case purple = "Purple"

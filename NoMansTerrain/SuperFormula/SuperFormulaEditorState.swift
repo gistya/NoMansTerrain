@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import simd
 
 @MainActor
@@ -64,6 +65,27 @@ final class SuperFormulaEditorState {
         \t<Property name="BottomRadiusOffset" value="\(format(primitive.bottomRadiusOffset))" />
         </Property>
         """
+    }
+
+    var formula1Binding: Binding<TkNoiseSuperFormulaData> {
+        Binding(
+            get: { self.formula1 },
+            set: { self.formula1 = $0 }
+        )
+    }
+
+    var formula2Binding: Binding<TkNoiseSuperFormulaData> {
+        Binding(
+            get: { self.formula2 },
+            set: { self.formula2 = $0 }
+        )
+    }
+
+    var primitiveBinding: Binding<TkNoiseSuperPrimitiveData> {
+        Binding(
+            get: { self.primitive },
+            set: { self.primitive = $0 }
+        )
     }
 
     func applyPreset(_ preset: SuperFormulaPreset) {

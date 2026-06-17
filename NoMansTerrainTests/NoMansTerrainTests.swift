@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Testing
 @testable import NoMansTerrain
 
@@ -30,10 +31,12 @@ struct NoMansTerrainTests {
 //        ).filter { $0.pathExtension == "xml" }
 
         let fileLoader = FileLoader()
+        let availablePresets = try await fileLoader.availablePresets()
         let settings = try await fileLoader.makeModelsOfXML()
         let aggregate = try settings.aggregate()
-        
-        #expect(settings.count == 31, "Loaded \(settings.count) terrain files")
+
+        #expect(!availablePresets.isEmpty)
+        #expect(settings.count == availablePresets.count, "Loaded \(settings.count) of \(availablePresets.count) matched terrain pairs")
 
         let aggregatedMin = aggregate.min
         let aggregatedMax = aggregate.max
@@ -56,5 +59,30 @@ struct NoMansTerrainTests {
         let maxXML = try String(contentsOf: maxURL, encoding: .utf8)
         #expect(minXML.contains("Property name=\"Min\""))
         #expect(maxXML.contains("Property name=\"Max\""))
+    }
+
+    @Test @MainActor
+    func terrainEditorSessionNestedBindingsMutateValues() async throws {
+        let fileLoader = FileLoader()
+        let presets = try await fileLoader.availablePresets()
+        let preset = try #require(presets.first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+        let session = TerrainEditorSession.fromBundle(preset: preset, pair: pair)
+
+        let originalSeaLevel = session.minData.seaLevel
+        session.minDataBinding.nested(\.seaLevel).wrappedValue = originalSeaLevel + 1.25
+
+        #expect(session.minData.seaLevel == originalSeaLevel + 1.25)
+
+        mutatePair(session.minDataBinding, session.maxDataBinding) { min, max in
+            TerrainEditorOperations.randomizeRootScalars(
+                minData: &min,
+                maxData: &max,
+                refMin: pair.min,
+                refMax: pair.max
+            )
+        }
+
+        #expect(session.minData.seaLevel != originalSeaLevel)
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 typealias BuildingVoxelType = NoiseVoxelType
 typealias ResourceVoxelType = NoiseVoxelType
 
-enum NoiseVoxelType: String, Codable {
+enum NoiseVoxelType: String, Codable, CaseIterable {
     case base = "Base"
     case rock = "Rock"
     case mountain = "Mountain"
@@ -16,27 +16,27 @@ enum NoiseVoxelType: String, Codable {
     case randomRockOrSubstance = "RandomRockOrSubstance"
 }
 
-enum OffsetType: String, Codable {
+enum OffsetType: String, Codable, CaseIterable {
     case base = "Base"
     case all = "All"
     case zero = "Zero"
     case seaLevel = "SeaLevel"
 }
 
-enum WaterFadeType: String, Codable {
+enum WaterFadeType: String, Codable, CaseIterable {
     case none = "None"
     case above = "Above"
     case below = "Below"
 }
 
-enum DebugNoiseType: String, Codable {
+enum DebugNoiseType: String, Codable, CaseIterable {
     case uber = "Uber"
     case plane = "Plane"
     case check = "Check"
     case sine = "Sine"
 }
 
-enum NoiseGridType: String, Codable {
+enum NoiseGridType: String, Codable, CaseIterable {
     case superFormula01 = "SuperFormula_01"
     case superFormula02 = "SuperFormula_02"
     case superFormula03 = "SuperFormula_03"
@@ -61,7 +61,7 @@ enum NoiseGridType: String, Codable {
     case file = "File"
 }
 
-enum FeatureType: String, Codable {
+enum FeatureType: String, Codable, CaseIterable {
     case tube = "Tube"
     case blob = "Blob"
 }

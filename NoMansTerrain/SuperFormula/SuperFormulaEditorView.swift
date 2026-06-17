@@ -8,8 +8,10 @@ struct SuperFormulaEditorView: View {
     @State private var zoomBaseDistance: Float = 3.2
 
     var body: some View {
+        @Bindable var state = state
+
         NavigationSplitView {
-            controlPanel
+            controlPanel(state: state)
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
         } detail: {
             previewPanel
@@ -23,7 +25,7 @@ struct SuperFormulaEditorView: View {
                 .gesture(cameraDragGesture)
                 .gesture(cameraZoomGesture)
 
-            VStack(alignment: .trailing, spacing: 8) {
+            VStack(alignment: .trailing) {
                 Text("Drag to orbit · Pinch/scroll to zoom")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -35,14 +37,18 @@ struct SuperFormulaEditorView: View {
                         .font(.caption.weight(.semibold))
                         .padding(8)
                         .background(.green.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .padding()
+            .animation(.snappy, value: copiedConfirmation)
         }
     }
 
-    private var controlPanel: some View {
-        Form {
+    private func controlPanel(state: SuperFormulaEditorState) -> some View {
+        @Bindable var state = state
+
+        return Form {
             Section("Presets") {
                 Picker("Preset", selection: Binding(
                     get: { "" },
@@ -58,34 +64,34 @@ struct SuperFormulaEditorView: View {
                 }
             }
 
-            formulaSection(title: "SuperFormula 1", formula: $state.formula1, mRange: 0.1...10, n1Range: 0...100)
-            formulaSection(title: "SuperFormula 2", formula: $state.formula2, mRange: 0.1...10, n1Range: 0...100)
+            formulaSection(title: "SuperFormula 1", formula: state.formula1Binding, mRange: 0.1...10, n1Range: 0...100)
+            formulaSection(title: "SuperFormula 2", formula: state.formula2Binding, mRange: 0.1...10, n1Range: 0...100)
 
             Section("SuperPrimitive") {
-                primitiveSlider("Width", value: $state.primitive.width, range: 0.1...1)
-                primitiveSlider("Height", value: $state.primitive.height, range: 0.1...1)
-                primitiveSlider("Depth", value: $state.primitive.depth, range: 0.1...1)
-                primitiveSlider("Thickness", value: $state.primitive.thickness, range: 0.1...1)
-                primitiveSlider("CornerRadiusXY", value: $state.primitive.cornerRadiusXY, range: 0...1)
-                primitiveSlider("CornerRadiusZ", value: $state.primitive.cornerRadiusZ, range: 0...1)
-                primitiveSlider("BottomRadiusOffset", value: $state.primitive.bottomRadiusOffset, range: 0...1)
+                let primitive = state.primitiveBinding
+                primitiveSlider("Width", value: primitive.nested(\.width), range: 0.1...1)
+                primitiveSlider("Height", value: primitive.nested(\.height), range: 0.1...1)
+                primitiveSlider("Depth", value: primitive.nested(\.depth), range: 0.1...1)
+                primitiveSlider("Thickness", value: primitive.nested(\.thickness), range: 0.1...1)
+                primitiveSlider("Corner Radius XY", value: primitive.nested(\.cornerRadiusXY), range: 0...1)
+                primitiveSlider("Corner Radius Z", value: primitive.nested(\.cornerRadiusZ), range: 0...1)
+                primitiveSlider("Bottom Radius Offset", value: primitive.nested(\.bottomRadiusOffset), range: 0...1)
             }
 
             Section("NMS XML") {
-                ScrollView {
-                    Text(state.xmlSnippet)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
-                .frame(minHeight: 180)
+                Text(state.xmlSnippet)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                    .lineLimit(nil)
 
-                Button("Copy XML to Clipboard") {
+                Button("Copy XML to Clipboard", systemImage: "doc.on.doc") {
                     copyXML()
                 }
             }
         }
         .formStyle(.grouped)
+        .terrainScrollEdgeEffect()
     }
 
     private func formulaSection(
@@ -95,19 +101,17 @@ struct SuperFormulaEditorView: View {
         n1Range: ClosedRange<Double>
     ) -> some View {
         Section(title) {
-            formulaSlider("Form_m", value: formula.formM, range: mRange)
-            formulaSlider("Form_n1", value: formula.formN1, range: n1Range)
-            formulaSlider("Form_n2", value: formula.formN2, range: -50...100)
-            formulaSlider("Form_n3", value: formula.formN3, range: -50...100)
+            formulaSlider("Form_m", value: formula.nested(\.formM), range: mRange)
+            formulaSlider("Form_n1", value: formula.nested(\.formN1), range: n1Range)
+            formulaSlider("Form_n2", value: formula.nested(\.formN2), range: -50...100)
+            formulaSlider("Form_n3", value: formula.nested(\.formN3), range: -50...100)
         }
     }
 
     private func formulaSlider(_ label: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label)
-                Spacer()
-                Text(String(format: "%.3f", value.wrappedValue))
+        VStack(alignment: .leading) {
+            LabeledContent(label) {
+                Text(value.wrappedValue, format: .number.precision(.fractionLength(3)))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -136,12 +140,12 @@ struct SuperFormulaEditorView: View {
     }
 
     private var cameraZoomGesture: some Gesture {
-        MagnificationGesture()
-            .onChanged { scale in
-                state.cameraDistance = clamp(zoomBaseDistance / Float(scale), min: 1.4, max: 8)
+        MagnifyGesture()
+            .onChanged { value in
+                state.cameraDistance = clamp(zoomBaseDistance / Float(value.magnification), min: 1.4, max: 8)
             }
-            .onEnded { scale in
-                zoomBaseDistance = clamp(zoomBaseDistance / Float(scale), min: 1.4, max: 8)
+            .onEnded { value in
+                zoomBaseDistance = clamp(zoomBaseDistance / Float(value.magnification), min: 1.4, max: 8)
                 state.cameraDistance = zoomBaseDistance
             }
     }
@@ -154,10 +158,14 @@ struct SuperFormulaEditorView: View {
         UIPasteboard.general.string = state.xmlSnippet
         #endif
 
-        copiedConfirmation = true
+        withAnimation(.snappy) {
+            copiedConfirmation = true
+        }
         Task {
             try? await Task.sleep(for: .seconds(1.5))
-            copiedConfirmation = false
+            withAnimation(.snappy) {
+                copiedConfirmation = false
+            }
         }
     }
 

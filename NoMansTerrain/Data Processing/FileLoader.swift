@@ -8,40 +8,56 @@ actor FileLoader {
     private let decoder = XMLDecoder(keyStrategy: .attribute(name: "name", value: "value"))
 
     func makeModelsOfXML(in bundle: Bundle = .main) throws -> [SendableTerrain] {
-        let minURLs = (bundle.urls(forResourcesWithExtension: "xml", subdirectory: nil) ?? [])
-            .filter { $0.lastPathComponent.localizedCaseInsensitiveContains("Min") }
-        let maxURLs = (bundle.urls(forResourcesWithExtension: "xml", subdirectory: nil) ?? [])
-            .filter { $0.lastPathComponent.localizedCaseInsensitiveContains("Max") }
+        let pairs = try matchedTerrainPairs(in: bundle)
+        return pairs.map { SendableTerrain(min: $0.min, max: $0.max) }
+    }
 
-        var loadedMins: [TkVoxelGeneratorData] = []
-        var loadedMaxs: [TkVoxelGeneratorData] = []
+    func availablePresets(in bundle: Bundle = .main) throws -> [TerrainPreset] {
+        let pairs = try matchedTerrainPairs(in: bundle)
+        return pairs.map(\.preset).sorted { $0.displayName < $1.displayName }
+    }
+
+    func loadTerrainPair(preset: TerrainPreset, in bundle: Bundle = .main) throws -> SendableTerrain {
+        guard let minURL = bundle.url(forResource: preset.fileBaseName + "_Min", withExtension: "xml"),
+              let maxURL = bundle.url(forResource: preset.fileBaseName + "_Max", withExtension: "xml")
+        else {
+            throw TerrainLimitsMergerError.missingPreset(preset)
+        }
+
+        let min = try loadTerrainMin(from: minURL).get()
+        let max = try loadTerrainMax(from: maxURL).get()
+        return SendableTerrain(min: min, max: max)
+    }
+
+    private struct MatchedTerrainPair {
+        var preset: TerrainPreset
+        var min: TkVoxelGeneratorData
+        var max: TkVoxelGeneratorData
+    }
+
+    private func matchedTerrainPairs(in bundle: Bundle) throws -> [MatchedTerrainPair] {
+        var pairs: [MatchedTerrainPair] = []
         var skipped: [String] = []
 
-        for url in minURLs {
-            switch loadTerrainMin(from: url) {
-            case .success(let data):
-                loadedMins.append(data)
-            case .failure:
-                skipped.append(url.lastPathComponent)
+        for preset in TerrainPreset.all {
+            guard let minURL = bundle.url(forResource: preset.fileBaseName + "_Min", withExtension: "xml"),
+                  let maxURL = bundle.url(forResource: preset.fileBaseName + "_Max", withExtension: "xml")
+            else { continue }
+
+            do {
+                let min = try loadTerrainMin(from: minURL).get()
+                let max = try loadTerrainMax(from: maxURL).get()
+                pairs.append(MatchedTerrainPair(preset: preset, min: min, max: max))
+            } catch {
+                skipped.append(preset.minFileName)
             }
         }
 
-        for url in maxURLs {
-            switch loadTerrainMax(from: url) {
-            case .success(let data):
-                loadedMaxs.append(data)
-            case .failure:
-                skipped.append(url.lastPathComponent)
-            }
+        if !skipped.isEmpty {
+            print("Skipped terrain pairs: \(skipped)")
         }
-        
-        print("Skipped files: \(skipped)")
-                
-        let settings = zip(loadedMins, loadedMaxs).map { (min, max) in
-            SendableTerrain(min: min, max: max)
-        }
-        
-        return settings
+
+        return pairs
     }
     
     @discardableResult
@@ -85,12 +101,15 @@ actor FileLoader {
 
 enum TerrainLimitsMergerError: Error, CustomStringConvertible {
     case noFilesLoaded(kind: String)
+    case missingPreset(TerrainPreset)
     case writeFailed(URL, any Error)
 
     var description: String {
         switch self {
         case .noFilesLoaded(let kind):
             return "No \(kind) terrain limit files could be loaded."
+        case .missingPreset(let preset):
+            return "Missing bundle files for \(preset.displayName)."
         case .writeFailed(let url, let error):
             return "Failed to write \(url.lastPathComponent): \(error)"
         }

@@ -6,13 +6,15 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct NoMansTerrainApp: App {
     var body: some Scene {
         WindowGroup {
-            SuperFormulaEditorView()
+            MainTabView()
         }
+        .modelContainer(for: TerrainSetting.self)
         .defaultSize(width: 1200, height: 800)
     }
 }
