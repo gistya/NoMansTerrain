@@ -29,12 +29,19 @@ enum TerrainExportService {
 /// Generates a randomized Min/Max terrain pair for every preset and writes them to
 /// disk in one batch — a "mass dump" of random terrain files for No Man's Sky.
 enum TerrainRandomBatch {
+    /// File name of the combined "big daddy" settings file written at the directory root.
+    static let combinedFileName = "TerrainSettings.xml"
+
     /// Number of presets a full run produces a Min/Max pair for.
     static var presetCount: Int { TerrainPreset.all.count }
 
+    /// Total progress steps: one per preset pair, plus the final combined file.
+    static var totalSteps: Int { presetCount + 1 }
+
     /// Randomizes and writes a Min/Max pair for each preset into `directory`
-    /// (under `Min/` and `Max/` subfolders). Reports 1-based progress after each
-    /// preset completes. Runs off the main actor.
+    /// (under `Min/` and `Max/` subfolders), then assembles the single combined
+    /// `cTkVoxelGeneratorSettingsArray` file from the same data at the directory
+    /// root. Reports 1-based progress after each step. Runs off the main actor.
     @discardableResult
     static func generateAll(
         into directory: URL,
@@ -44,6 +51,11 @@ enum TerrainRandomBatch {
     ) async throws -> Int {
         let loader = FileLoader()
         let presets = TerrainPreset.all
+        let total = presets.count + 1
+
+        var entries: [NMSPropertySerializer.CombinedEntry] = []
+        entries.reserveCapacity(presets.count)
+
         for (index, preset) in presets.enumerated() {
             var minData = globalMin
             var maxData = globalMax
@@ -55,8 +67,16 @@ enum TerrainRandomBatch {
             )
             _ = try await loader.write(terrain: preset.minTerrain, data: minData, to: directory)
             _ = try await loader.write(terrain: preset.maxTerrain, data: maxData, to: directory)
-            await progress(index + 1, presets.count)
+            entries.append(.init(name: preset.fileBaseName, min: minData, max: maxData))
+            await progress(index + 1, total)
         }
+
+        try NMSPropertySerializer.writeCombined(
+            entries,
+            to: directory.appendingPathComponent(combinedFileName)
+        )
+        await progress(total, total)
+
         return presets.count
     }
 }

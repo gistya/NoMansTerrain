@@ -12,7 +12,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         case hugeArches
         case lilyPad
         case mountainRavines
-        case waterWorld
+        case waterworld
 
         var displayName: String {
             switch self {
@@ -26,7 +26,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
             case .hugeArches: "Huge Arches"
             case .lilyPad: "Lily Pad"
             case .mountainRavines: "Mountain Ravines"
-            case .waterWorld: "Water World"
+            case .waterworld: "Water World"
             }
         }
 
@@ -42,7 +42,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
             case .hugeArches: "HugeArches"
             case .lilyPad: "LilyPad"
             case .mountainRavines: "MountainRavines"
-            case .waterWorld: "WaterWorld"
+            case .waterworld: "Waterworld"
             }
         }
     }
@@ -86,13 +86,14 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         case .hugeArches: .hugeArches(category, limit)
         case .lilyPad: .lilyPad(category, limit)
         case .mountainRavines: .mountainRavines(category, limit)
-        case .waterWorld: .waterWorld(category, limit)
+        case .waterworld: .waterworld(category, limit)
         }
     }
 
     static var all: [TerrainPreset] {
         Kind.allCases.flatMap { kind in
-            [Terrain.Category.standard, .prime, .purple].map { category in
+            guard kind != .waterworld else { return [TerrainPreset(kind: kind, category: .prime)]}
+            return [Terrain.Category.standard, .prime, .purple].map { category in
                 TerrainPreset(kind: kind, category: category)
             }
         }

@@ -25,6 +25,52 @@ enum NMSPropertySerializer {
         try xml.write(to: url, atomically: true, encoding: .utf8)
     }
 
+    // MARK: - Combined settings file
+
+    /// One terrain in the combined `cTkVoxelGeneratorSettingsArray` document.
+    struct CombinedEntry {
+        let name: String
+        let min: TkVoxelGeneratorData
+        let max: TkVoxelGeneratorData
+    }
+
+    /// Builds the single "big daddy" file that the game ships — every terrain's
+    /// Min/Max pair under one `cTkVoxelGeneratorSettingsArray` root — and writes it.
+    static func writeCombined(_ entries: [CombinedEntry], to url: URL) throws {
+        let doc = XDM.document {
+            element("Data", attributes: [attr("template", "cTkVoxelGeneratorSettingsArray")]) {
+                element("Property", attributes: [attr("name", "TerrainSettings")]) {
+                    for entry in entries {
+                        settingsElement(entry)
+                    }
+                }
+            }
+        }
+
+        guard let root = doc.documentElement else {
+            throw TerrainLimitsMergerError.writeFailed(url, NSError(domain: "NMSPropertySerializer", code: 2))
+        }
+
+        let body = XMLSerializer.serialize(
+            root,
+            options: .init(indent: true, indentUnit: "\t", omitXMLDeclaration: true)
+        )
+        let xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + body + "\n"
+        try xml.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    @DocumentBuilder
+    private static func settingsElement(_ entry: CombinedEntry) -> [NodeSpec] {
+        element("Property", attributes: [attr("name", entry.name), attr("value", "TkVoxelGeneratorSettingsElement")]) {
+            element("Property", attributes: [attr("name", "Min"), attr("value", "TkVoxelGeneratorData")]) {
+                voxelGeneratorProperties(entry.min)
+            }
+            element("Property", attributes: [attr("name", "Max"), attr("value", "TkVoxelGeneratorData")]) {
+                voxelGeneratorProperties(entry.max)
+            }
+        }
+    }
+
     @DocumentBuilder
     private static func voxelGeneratorProperties(_ data: TkVoxelGeneratorData) -> [NodeSpec] {
         baseSeedProperty(data.baseSeed)

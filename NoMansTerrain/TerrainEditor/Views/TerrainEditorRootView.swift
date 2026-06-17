@@ -23,7 +23,7 @@ struct TerrainEditorRootView: View {
 
     @State private var isGenerating = false
     @State private var genProgress = 0
-    @State private var genTotal = TerrainRandomBatch.presetCount
+    @State private var genTotal = TerrainRandomBatch.totalSteps
     @State private var genError: String?
     @State private var showGenError = false
 
@@ -79,7 +79,9 @@ struct TerrainEditorRootView: View {
                     Text("Generating Random Terrain Set…")
                         .font(.headline)
                 } currentValueLabel: {
-                    Text("\(genProgress) of \(genTotal) presets")
+                    Text(genProgress >= genTotal && genTotal > 0
+                         ? "Assembling combined file…"
+                         : "\(genProgress) of \(genTotal) steps")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
@@ -164,7 +166,7 @@ struct TerrainEditorRootView: View {
 
             isGenerating = true
             genProgress = 0
-            genTotal = TerrainRandomBatch.presetCount
+            genTotal = TerrainRandomBatch.totalSteps
             defer { isGenerating = false }
 
             let accessed = directory.startAccessingSecurityScopedResource()

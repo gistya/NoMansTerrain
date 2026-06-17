@@ -143,6 +143,47 @@ struct NoMansTerrainTests {
 
         #expect(try xmlCount(in: "Min") == TerrainPreset.all.count)
         #expect(try xmlCount(in: "Max") == TerrainPreset.all.count)
+
+        // The batch also assembles the single combined file at the directory root.
+        let combinedURL = directory.appendingPathComponent(TerrainRandomBatch.combinedFileName)
+        #expect(FileManager.default.fileExists(atPath: combinedURL.path))
+    }
+
+    @Test @MainActor
+    func combinedFileAssemblesEveryPresetAndExcludesNonPrimeWaterWorld() async throws {
+        let fileLoader = FileLoader()
+        let aggregate = try await fileLoader.makeModelsOfXML().aggregate()
+
+        let entries = TerrainPreset.all.map {
+            NMSPropertySerializer.CombinedEntry(name: $0.fileBaseName, min: aggregate.min, max: aggregate.max)
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("combined-\(UUID().uuidString).xml")
+        try NMSPropertySerializer.writeCombined(entries, to: url)
+
+        let xml = try String(contentsOf: url, encoding: .utf8)
+        #expect(xml.hasPrefix("<?xml version=\"1.0\" encoding=\"utf-8\"?>"))
+        #expect(xml.contains("template=\"cTkVoxelGeneratorSettingsArray\""))
+        #expect(xml.contains("name=\"TerrainSettings\""))
+
+        let elementCount = xml.components(separatedBy: "value=\"TkVoxelGeneratorSettingsElement\"").count - 1
+        #expect(elementCount == TerrainPreset.all.count)
+
+        // Waterworld ships only as the Prime variant.
+        #expect(xml.contains("name=\"WaterworldPrime\""))
+        #expect(!xml.contains("name=\"Waterworld\""))
+        #expect(!xml.contains("name=\"WaterworldPurple\""))
+
+        // Hastings produced a well-formed document.
+        let parser = Foundation.XMLParser(data: Data(xml.utf8))
+        #expect(parser.parse(), "Combined file should be well-formed XML")
+    }
+
+    @Test
+    func presetListExposesOnlyWaterWorldPrime() {
+        let waterWorld = TerrainPreset.all.filter { $0.kind == .waterworld }
+        #expect(waterWorld.count == 1)
+        #expect(waterWorld.first?.category == .prime)
     }
 
     @Test @MainActor
