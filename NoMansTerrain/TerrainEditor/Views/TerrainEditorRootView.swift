@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 private enum TerrainSidebarSelection: Hashable {
     case draft
@@ -17,6 +20,12 @@ struct TerrainEditorRootView: View {
     @State private var activeSessionKey: TerrainSidebarSelection?
     @State private var showNewSheet = false
     @State private var searchText = ""
+
+    @State private var isGenerating = false
+    @State private var genProgress = 0
+    @State private var genTotal = TerrainRandomBatch.presetCount
+    @State private var genError: String?
+    @State private var showGenError = false
 
     private var filteredSettings: [TerrainSetting] {
         guard !searchText.isEmpty else { return savedSettings }
@@ -49,6 +58,35 @@ struct TerrainEditorRootView: View {
                 }
             )
             .terrainFormPresentationSizing()
+        }
+        .overlay {
+            if isGenerating {
+                generatingOverlay
+            }
+        }
+        .alert("Generation Failed", isPresented: $showGenError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(genError ?? "Unknown error")
+        }
+    }
+
+    private var generatingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.25).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView(value: Double(genProgress), total: Double(max(genTotal, 1))) {
+                    Text("Generating Random Terrain Set…")
+                        .font(.headline)
+                } currentValueLabel: {
+                    Text("\(genProgress) of \(genTotal) presets")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 280)
+            }
+            .padding(28)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
     }
 
@@ -96,6 +134,15 @@ struct TerrainEditorRootView: View {
                     Label("New Terrain", systemImage: "plus")
                 }
             }
+#if os(macOS)
+            ToolbarItem {
+                Button(action: generateRandomSet) {
+                    Label("Generate Random Set…", systemImage: "dice")
+                }
+                .help("Create a random Min/Max terrain file for every preset and save them to a folder")
+                .disabled(isGenerating)
+            }
+#endif
 #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
@@ -103,6 +150,55 @@ struct TerrainEditorRootView: View {
 #endif
         }
     }
+
+#if os(macOS)
+    private func generateRandomSet() {
+        Task { @MainActor in
+            await catalog.loadIfNeeded()
+            guard let globalMin = catalog.globalMin, let globalMax = catalog.globalMax else {
+                genError = "Terrain limits are unavailable, so a random set can't be generated."
+                showGenError = true
+                return
+            }
+            guard let directory = chooseDumpDirectory() else { return }
+
+            isGenerating = true
+            genProgress = 0
+            genTotal = TerrainRandomBatch.presetCount
+            defer { isGenerating = false }
+
+            let accessed = directory.startAccessingSecurityScopedResource()
+            defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
+
+            do {
+                try await TerrainRandomBatch.generateAll(
+                    into: directory,
+                    globalMin: globalMin,
+                    globalMax: globalMax
+                ) { completed, total in
+                    genProgress = completed
+                    genTotal = total
+                }
+                NSWorkspace.shared.activateFileViewerSelecting([directory])
+            } catch {
+                genError = error.localizedDescription
+                showGenError = true
+            }
+        }
+    }
+
+    private func chooseDumpDirectory() -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Output Folder"
+        panel.message = "Choose a folder to write the random Min/Max terrain set into."
+        panel.prompt = "Generate Here"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+#endif
 
     @ViewBuilder
     private var detailColumn: some View {

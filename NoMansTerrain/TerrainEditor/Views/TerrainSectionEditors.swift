@@ -70,14 +70,24 @@ struct RootTerrainEditorContent: View {
                     )
                 }
             )
+
+            Button("Activate All Layers", systemImage: "checkmark.circle.fill") {
+                mutatePair(session.minDataBinding, session.maxDataBinding) { min, max in
+                    TerrainEditorOperations.activateAll(&min)
+                    TerrainEditorOperations.activateAll(&max)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Turn on every layer/feature toggle in both the Min and Max files")
         }
 
         Section("Seed & Water") {
             MinMaxSeedField(label: "Base Seed", minSeed: session.minDataBinding.nested(\.baseSeed), maxSeed: session.maxDataBinding.nested(\.baseSeed))
-            MinMaxDoubleField(label: "Sea Level", minValue: session.minDataBinding.nested(\.seaLevel), maxValue: session.maxDataBinding.nested(\.seaLevel), range: fieldRange(globalMin.seaLevel, globalMax.seaLevel, currentMin: session.minData.seaLevel, currentMax: session.maxData.seaLevel))
-            MinMaxDoubleField(label: "Beach Height", minValue: session.minDataBinding.nested(\.beachHeight), maxValue: session.maxDataBinding.nested(\.beachHeight), range: fieldRange(globalMin.beachHeight, globalMax.beachHeight, currentMin: session.minData.beachHeight, currentMax: session.maxData.beachHeight))
-            MinMaxDoubleField(label: "No Sea Base Level", minValue: session.minDataBinding.nested(\.noSeaBaseLevel), maxValue: session.maxDataBinding.nested(\.noSeaBaseLevel), range: fieldRange(globalMin.noSeaBaseLevel, globalMax.noSeaBaseLevel, currentMin: session.minData.noSeaBaseLevel, currentMax: session.maxData.noSeaBaseLevel))
-            MinMaxDoubleField(label: "Water Fade In Distance", minValue: session.minDataBinding.nested(\.waterFadeInDistance), maxValue: session.maxDataBinding.nested(\.waterFadeInDistance), range: fieldRange(globalMin.waterFadeInDistance, globalMax.waterFadeInDistance, currentMin: session.minData.waterFadeInDistance, currentMax: session.maxData.waterFadeInDistance))
+            MinMaxDoubleField(label: "Sea Level", minValue: session.minDataBinding.nested(\.seaLevel), maxValue: session.maxDataBinding.nested(\.seaLevel), range: fieldRange(globalMin.seaLevel, globalMax.seaLevel))
+            MinMaxDoubleField(label: "Beach Height", minValue: session.minDataBinding.nested(\.beachHeight), maxValue: session.maxDataBinding.nested(\.beachHeight), range: fieldRange(globalMin.beachHeight, globalMax.beachHeight))
+            MinMaxDoubleField(label: "No Sea Base Level", minValue: session.minDataBinding.nested(\.noSeaBaseLevel), maxValue: session.maxDataBinding.nested(\.noSeaBaseLevel), range: fieldRange(globalMin.noSeaBaseLevel, globalMax.noSeaBaseLevel))
+            MinMaxDoubleField(label: "Water Fade In Distance", minValue: session.minDataBinding.nested(\.waterFadeInDistance), maxValue: session.maxDataBinding.nested(\.waterFadeInDistance), range: fieldRange(globalMin.waterFadeInDistance, globalMax.waterFadeInDistance))
         }
 
         Section("Voxel Types") {
@@ -86,25 +96,24 @@ struct RootTerrainEditorContent: View {
         }
 
         Section("Caves") {
-            MinMaxDoubleField(label: "Minimum Cave Depth", minValue: session.minDataBinding.nested(\.minimumCaveDepth), maxValue: session.maxDataBinding.nested(\.minimumCaveDepth), range: fieldRange(globalMin.minimumCaveDepth, globalMax.minimumCaveDepth, currentMin: session.minData.minimumCaveDepth, currentMax: session.maxData.minimumCaveDepth))
-            MinMaxDoubleField(label: "Cave Roof Smoothing Dist", minValue: session.minDataBinding.nested(\.caveRoofSmoothingDist), maxValue: session.maxDataBinding.nested(\.caveRoofSmoothingDist), range: fieldRange(globalMin.caveRoofSmoothingDist, globalMax.caveRoofSmoothingDist, currentMin: session.minData.caveRoofSmoothingDist, currentMax: session.maxData.caveRoofSmoothingDist))
-            MinMaxDoubleField(label: "Maximum Sea Level Cave Depth", minValue: session.minDataBinding.nested(\.maximumSeaLevelCaveDepth), maxValue: session.maxDataBinding.nested(\.maximumSeaLevelCaveDepth), range: fieldRange(globalMin.maximumSeaLevelCaveDepth, globalMax.maximumSeaLevelCaveDepth, currentMin: session.minData.maximumSeaLevelCaveDepth, currentMax: session.maxData.maximumSeaLevelCaveDepth))
+            MinMaxDoubleField(label: "Minimum Cave Depth", minValue: session.minDataBinding.nested(\.minimumCaveDepth), maxValue: session.maxDataBinding.nested(\.minimumCaveDepth), range: fieldRange(globalMin.minimumCaveDepth, globalMax.minimumCaveDepth))
+            MinMaxDoubleField(label: "Cave Roof Smoothing Dist", minValue: session.minDataBinding.nested(\.caveRoofSmoothingDist), maxValue: session.maxDataBinding.nested(\.caveRoofSmoothingDist), range: fieldRange(globalMin.caveRoofSmoothingDist, globalMax.caveRoofSmoothingDist))
+            MinMaxDoubleField(label: "Maximum Sea Level Cave Depth", minValue: session.minDataBinding.nested(\.maximumSeaLevelCaveDepth), maxValue: session.maxDataBinding.nested(\.maximumSeaLevelCaveDepth), range: fieldRange(globalMin.maximumSeaLevelCaveDepth, globalMax.maximumSeaLevelCaveDepth))
         }
 
         Section("Building") {
-            MinMaxDoubleField(label: "Building Texture Radius", minValue: session.minDataBinding.nested(\.buildingTextureRadius), maxValue: session.maxDataBinding.nested(\.buildingTextureRadius), range: fieldRange(globalMin.buildingTextureRadius, globalMax.buildingTextureRadius, currentMin: session.minData.buildingTextureRadius, currentMax: session.maxData.buildingTextureRadius))
-            MinMaxDoubleField(label: "Building Smoothing Radius", minValue: session.minDataBinding.nested(\.buildingSmoothingRadius), maxValue: session.maxDataBinding.nested(\.buildingSmoothingRadius), range: fieldRange(globalMin.buildingSmoothingRadius, globalMax.buildingSmoothingRadius, currentMin: session.minData.buildingSmoothingRadius, currentMax: session.maxData.buildingSmoothingRadius))
-            MinMaxDoubleField(label: "Building Smoothing Height", minValue: session.minDataBinding.nested(\.buildingSmoothingHeight), maxValue: session.maxDataBinding.nested(\.buildingSmoothingHeight), range: fieldRange(globalMin.buildingSmoothingHeight, globalMax.buildingSmoothingHeight, currentMin: session.minData.buildingSmoothingHeight, currentMax: session.maxData.buildingSmoothingHeight))
+            MinMaxDoubleField(label: "Building Texture Radius", minValue: session.minDataBinding.nested(\.buildingTextureRadius), maxValue: session.maxDataBinding.nested(\.buildingTextureRadius), range: fieldRange(globalMin.buildingTextureRadius, globalMax.buildingTextureRadius))
+            MinMaxDoubleField(label: "Building Smoothing Radius", minValue: session.minDataBinding.nested(\.buildingSmoothingRadius), maxValue: session.maxDataBinding.nested(\.buildingSmoothingRadius), range: fieldRange(globalMin.buildingSmoothingRadius, globalMax.buildingSmoothingRadius))
+            MinMaxDoubleField(label: "Building Smoothing Height", minValue: session.minDataBinding.nested(\.buildingSmoothingHeight), maxValue: session.maxDataBinding.nested(\.buildingSmoothingHeight), range: fieldRange(globalMin.buildingSmoothingHeight, globalMax.buildingSmoothingHeight))
         }
     }
 
-    private func fieldRange(_ lo: Double, _ hi: Double, currentMin: Double, currentMax: Double) -> ClosedRange<Double> {
-        TerrainEditableRanges.doubleRange(
-            aggregatedMin: lo,
-            aggregatedMax: hi,
-            currentMin: currentMin,
-            currentMax: currentMax
-        )
+    /// Range derived purely from the bundle's aggregated limits. The field itself
+    /// widens this to include its current values, so we deliberately avoid reading
+    /// `session.minData`/`maxData` here — doing so would re-render the whole General
+    /// form on every field edit.
+    private func fieldRange(_ lo: Double, _ hi: Double) -> ClosedRange<Double> {
+        TerrainEditableRanges.doubleRange(aggregatedMin: lo, aggregatedMax: hi)
     }
 }
 

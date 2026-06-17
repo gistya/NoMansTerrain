@@ -59,6 +59,39 @@ enum TerrainEditorOperations {
         maxData = global
     }
 
+    // MARK: - Activate all
+
+    /// Turns on every `active` toggle in a terrain file: all noise layers, grid
+    /// layers (including their turbulence layer), features, and cave features.
+    static func activateAll(_ data: inout TkVoxelGeneratorData) {
+        let noiseLayers: [WritableKeyPath<NoiseLayers, TkNoiseUberLayerData>] = [
+            \.base, \.hill, \.mountain, \.rock, \.underWater, \.texture, \.elevation, \.continent
+        ]
+        for keyPath in noiseLayers {
+            data.noiseLayers[keyPath: keyPath].active = true
+        }
+
+        let gridLayers: [WritableKeyPath<GridLayers, TkNoiseGridData>] = [
+            \.small, \.large,
+            \.resourcesHeridium, \.resourcesIridium, \.resourcesCopper, \.resourcesNickel,
+            \.resourcesAluminium, \.resourcesGold, \.resourcesEmeril
+        ]
+        for keyPath in gridLayers {
+            data.gridLayers[keyPath: keyPath].active = true
+            data.gridLayers[keyPath: keyPath].turbulenceNoiseLayer.active = true
+        }
+
+        let features: [WritableKeyPath<Features, TkNoiseFeatureData>] = [
+            \.river, \.crater, \.arches, \.archesSmall, \.blobs, \.blobsSmall, \.substance
+        ]
+        for keyPath in features {
+            data.features[keyPath: keyPath].active = true
+        }
+
+        data.caves.underground.mouth.active = true
+        data.caves.underground.tunnel.active = true
+    }
+
     // MARK: - Randomize
 
     static func randomizeRootScalars(

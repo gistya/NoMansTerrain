@@ -88,6 +88,9 @@ struct TerrainEditorDetailView: View {
     @State private var showShareSheet = false
     @State private var exportError: String?
     @State private var showExportError = false
+    @State private var didSaveRecently = false
+    @State private var saveError: String?
+    @State private var showSaveError = false
 
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
         case general, noiseLayers, gridLayers, features, caves
@@ -133,6 +136,36 @@ struct TerrainEditorDetailView: View {
         } message: {
             Text(exportError ?? "Unknown error")
         }
+        .alert("Save Failed", isPresented: $showSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveError ?? "Unknown error")
+        }
+    }
+
+    @ViewBuilder
+    private func saveBar(session: TerrainEditorSession) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: didSaveRecently ? "checkmark.circle.fill" : (session.isDirty ? "pencil.circle" : "tray.full"))
+                .foregroundStyle(didSaveRecently ? .green : (session.isDirty ? .orange : .secondary))
+            Text(didSaveRecently ? "Saved to Library" : (session.isDirty ? "Unsaved changes" : "Up to date"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .animation(.snappy, value: didSaveRecently)
+
+            Spacer()
+
+            Button {
+                saveDocument()
+            } label: {
+                Label("Save to Library", systemImage: "square.and.arrow.down")
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut("s", modifiers: .command)
+            .disabled(existingSetting != nil && !session.isDirty)
+        }
+        .padding(.horizontal)
+        .padding(.top)
     }
 
     @ViewBuilder
@@ -142,6 +175,8 @@ struct TerrainEditorDetailView: View {
         globalMax: TkVoxelGeneratorData
     ) -> some View {
         VStack(spacing: 0) {
+            saveBar(session: session)
+
             Picker("Section", selection: $selectedSection) {
                 ForEach(TerrainEditorSection.allCases) { section in
                     Text(section.title).tag(section)
@@ -228,8 +263,25 @@ struct TerrainEditorDetailView: View {
             modelContext.insert(newSetting)
             setting = newSetting
         }
+
+        // SwiftData autosaves, but persist explicitly so failures surface immediately
+        // rather than silently at some later checkpoint.
+        do {
+            try modelContext.save()
+        } catch {
+            saveError = error.localizedDescription
+            showSaveError = true
+            return
+        }
+
         session.isDirty = false
         onSave?(setting)
+
+        withAnimation(.snappy) { didSaveRecently = true }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation(.snappy) { didSaveRecently = false }
+        }
     }
 
     private func shareXML() {
@@ -257,7 +309,12 @@ struct TerrainEditorDetailView: View {
                     minData: session.minData,
                     maxData: session.maxData
                 )
-                TerrainFolderSaver.save(urls: urls, suggestedFolderName: session.preset.fileBaseName)
+                if let destination = try TerrainFolderSaver.save(
+                    urls: urls,
+                    suggestedFolderName: session.preset.fileBaseName
+                ) {
+                    NSWorkspace.shared.activateFileViewerSelecting([destination])
+                }
             } catch {
                 exportError = error.localizedDescription
                 showExportError = true
@@ -290,7 +347,7 @@ struct TerrainShareSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Export writes a Min/Max pair to a temporary folder. Choose how to share or save them.")
+                    Text("Share these files via AirDrop, Mail, or “Save to Files”. To write them straight to a folder on disk, use “Save to Folder…” in the editor toolbar.")
                         .foregroundStyle(.secondary)
                 }
 
@@ -310,16 +367,9 @@ struct TerrainShareSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
-                ToolbarItemGroup(placement: .confirmationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     ShareLink(items: urls) {
                         Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                    Button("Save to Folder…") {
-                        TerrainFolderSaver.save(
-                            urls: urls,
-                            suggestedFolderName: urls.first?.deletingPathExtension().lastPathComponent ?? "Terrain"
-                        )
-                        dismiss()
                     }
                 }
             }
@@ -331,25 +381,38 @@ struct TerrainShareSheet: View {
 
 #if os(macOS)
 enum TerrainFolderSaver {
-    static func save(urls: [URL], suggestedFolderName: String) {
+    /// Prompts for a destination folder and copies `urls` into a subfolder there.
+    /// Returns the destination folder, or `nil` if the user cancelled. Throws (rather
+    /// than silently swallowing) on any filesystem failure so callers can report it.
+    @discardableResult
+    @MainActor
+    static func save(urls: [URL], suggestedFolderName: String) throws -> URL? {
         let panel = NSOpenPanel()
         panel.title = "Choose Folder"
+        panel.message = "Choose where to save the Min/Max XML files."
         panel.prompt = "Save"
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
 
-        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        guard panel.runModal() == .OK, let directory = panel.url else { return nil }
+
+        let accessed = directory.startAccessingSecurityScopedResource()
+        defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
 
         let destination = directory.appendingPathComponent(suggestedFolderName, isDirectory: true)
-        try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
 
         for url in urls {
             let target = destination.appendingPathComponent(url.lastPathComponent)
-            try? FileManager.default.removeItem(at: target)
-            try? FileManager.default.copyItem(at: url, to: target)
+            if FileManager.default.fileExists(atPath: target.path) {
+                try FileManager.default.removeItem(at: target)
+            }
+            try FileManager.default.copyItem(at: url, to: target)
         }
+
+        return destination
     }
 }
 #endif

@@ -66,7 +66,7 @@ actor FileLoader {
         let dir = terrainDirectory.appendingPathComponent(terrain.limit.rawValue, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let url = dir.appendingPathComponent(terrain.fileName)
+        let url = dir.appendingPathComponent(terrain.fileName).appendingPathExtension("xml")
 
         do {
             try NMSPropertySerializer.write(limit: terrain.limit, data, to: url)

@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 import Testing
 @testable import NoMansTerrain
 
@@ -59,6 +60,109 @@ struct NoMansTerrainTests {
         let maxXML = try String(contentsOf: maxURL, encoding: .utf8)
         #expect(minXML.contains("Property name=\"Min\""))
         #expect(maxXML.contains("Property name=\"Max\""))
+    }
+
+    @Test
+    func exportServiceWritesXMLFilePair() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        let urls = try await TerrainExportService.writeXMLPairToTemporaryDirectory(
+            preset: preset,
+            minData: pair.min,
+            maxData: pair.max
+        )
+
+        #expect(urls.count == 2)
+        for url in urls {
+            #expect(url.pathExtension == "xml", "Exported file should be .xml: \(url.lastPathComponent)")
+            #expect(FileManager.default.fileExists(atPath: url.path), "Missing exported file: \(url.path)")
+            let contents = try String(contentsOf: url, encoding: .utf8)
+            #expect(contents.contains("TkVoxelGeneratorData"))
+        }
+    }
+
+    @Test @MainActor
+    func savesAndReloadsTerrainSettingViaSwiftData() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        // Use an on-disk store: the SQLite "too many columns" schema failure only
+        // surfaces when the store is actually created on disk, not in-memory.
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terrain-store-\(UUID().uuidString).store")
+        let container = try ModelContainer(
+            for: TerrainSetting.self,
+            configurations: ModelConfiguration(url: storeURL)
+        )
+        let context = container.mainContext
+
+        let setting = TerrainSetting(
+            name: "Round Trip",
+            preset: preset,
+            min: TerrainMin(min: pair.min),
+            max: TerrainMax(max: pair.max)
+        )
+        context.insert(setting)
+        try context.save()
+
+        let fetched = try context.fetch(FetchDescriptor<TerrainSetting>())
+        #expect(fetched.count == 1)
+        let loaded = try #require(fetched.first)
+        #expect(loaded.name == "Round Trip")
+        #expect(loaded.preset == preset)
+        #expect(loaded.sendableMin.seaLevel == pair.min.seaLevel)
+        #expect(loaded.sendableMax.noiseLayers.base.height == pair.max.noiseLayers.base.height)
+    }
+
+    @Test @MainActor
+    func generateRandomBatchWritesPairForEveryPreset() async throws {
+        let fileLoader = FileLoader()
+        let aggregate = try await fileLoader.makeModelsOfXML().aggregate()
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("random-batch-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let written = try await TerrainRandomBatch.generateAll(
+            into: directory,
+            globalMin: aggregate.min,
+            globalMax: aggregate.max
+        ) { _, _ in }
+
+        #expect(written == TerrainPreset.all.count)
+
+        func xmlCount(in subfolder: String) throws -> Int {
+            try FileManager.default
+                .contentsOfDirectory(at: directory.appendingPathComponent(subfolder), includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "xml" }
+                .count
+        }
+
+        #expect(try xmlCount(in: "Min") == TerrainPreset.all.count)
+        #expect(try xmlCount(in: "Max") == TerrainPreset.all.count)
+    }
+
+    @Test @MainActor
+    func activateAllTurnsOnEveryActiveToggle() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        var data = pair.min
+        TerrainEditorOperations.activateAll(&data)
+
+        #expect(data.noiseLayers.base.active)
+        #expect(data.noiseLayers.continent.active)
+        #expect(data.gridLayers.small.active)
+        #expect(data.gridLayers.resourcesEmeril.active)
+        #expect(data.gridLayers.large.turbulenceNoiseLayer.active)
+        #expect(data.features.river.active)
+        #expect(data.features.substance.active)
+        #expect(data.caves.underground.mouth.active)
+        #expect(data.caves.underground.tunnel.active)
     }
 
     @Test @MainActor
