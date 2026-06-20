@@ -21,17 +21,28 @@ import SwiftData
 final class TerrainSetting {
     var name: String
 
+    /// True for terrains created blank (Workflow A) rather than cloned from a bundle
+    /// preset; drives the "Custom" sidebar label instead of a borrowed preset name.
+    var isCustom: Bool = false
+
     private var presetData: Data
     private var minData: Data
     private var maxData: Data
+
+    /// Folder slots that link (live-reference) this terrain. Nullified when the terrain
+    /// is deleted, so those slots simply become empty.
+    @Relationship(deleteRule: .nullify, inverse: \TerrainSlot.linkedTerrain)
+    var linkingSlots: [TerrainSlot] = []
 
     init(
         name: String,
         preset: TerrainPreset,
         min: TerrainMin,
-        max: TerrainMax
+        max: TerrainMax,
+        isCustom: Bool = false
     ) {
         self.name = name
+        self.isCustom = isCustom
         self.presetData = Self.encode(preset)
         self.minData = Self.encode(min)
         self.maxData = Self.encode(max)

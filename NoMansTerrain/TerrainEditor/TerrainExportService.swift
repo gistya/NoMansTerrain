@@ -58,6 +58,21 @@ enum TerrainExportService {
         try NMSPropertySerializer.writeCombined(entries, to: url)
     }
 
+    /// Resolves a folder's filled slots into combined-file entries in game order. Reads
+    /// SwiftData models, so it runs on the main actor; the returned entries are `Sendable`
+    /// and can be handed to `NMSPropertySerializer.writeCombined` off the main thread.
+    @MainActor
+    static func folderEntries(_ folder: TerrainSettingsFolder) -> [NMSPropertySerializer.CombinedEntry] {
+        let all = TerrainPreset.all
+        return folder.orderedSlots.compactMap { slot in
+            guard all.indices.contains(slot.presetOrder),
+                  let min = slot.resolvedMin,
+                  let max = slot.resolvedMax
+            else { return nil }
+            return NMSPropertySerializer.CombinedEntry(name: all[slot.presetOrder].fileBaseName, min: min, max: max)
+        }
+    }
+
     /// Filesystem-safe base name derived from a user terrain name (e.g. "My Cool World"
     /// → "MyCoolWorld"). Falls back to "Terrain" when empty.
     static func sanitizedFileName(_ name: String) -> String {

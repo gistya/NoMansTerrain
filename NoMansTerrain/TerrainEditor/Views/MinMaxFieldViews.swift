@@ -27,26 +27,27 @@ struct SectionActionBar<Value>: View {
 
 /// Min/max double editor.
 ///
-/// Sliders drive **local** `@State` while dragging and only write back to the
-/// (potentially huge, `@Observable`) model bindings when the drag ends. That keeps
-/// a slider drag from copying the entire terrain struct and rebuilding the whole
-/// form on every frame. Text fields commit on return/focus-loss (low frequency),
-/// so they write through immediately.
+/// Sliders show the **model value directly** except while actively dragging, when they
+/// switch to a transient local value and only write back to the (potentially huge,
+/// `@Observable`) model on release. That keeps a drag from copying the entire terrain
+/// struct every frame, while still reflecting external changes (Lowest/Highest buttons,
+/// randomize, tab switches) immediately. Text fields commit on return/focus-loss.
 struct MinMaxDoubleField: View {
     let label: String
     @Binding var minValue: Double
     @Binding var maxValue: Double
     let range: ClosedRange<Double>
 
-    @State private var localMin = 0.0
-    @State private var localMax = 0.0
+    /// Non-nil only while that column's slider is being dragged.
+    @State private var dragMin: Double?
+    @State private var dragMax: Double?
 
     /// Display range widened to include the current values so a value loaded from
     /// disk outside the documented range is never silently clamped.
     private var effectiveRange: ClosedRange<Double> {
-        let lo = Swift.min(range.lowerBound, localMin, localMax)
-        let hi = Swift.max(range.upperBound, localMin, localMax)
-        return lo <= hi ? lo...hi : lo...lo
+        let lo = Swift.min(range.lowerBound, minValue, maxValue)
+        let hi = Swift.max(range.upperBound, minValue, maxValue)
+        return lo < hi ? lo...hi : lo...(lo + 1)
     }
 
     var body: some View {
@@ -64,13 +65,6 @@ struct MinMaxDoubleField: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
-        .onAppear {
-            localMin = minValue
-            localMax = maxValue
-        }
-        .onDisappear { commit() }
-        .onChange(of: minValue) { _, newValue in if newValue != localMin { localMin = newValue } }
-        .onChange(of: maxValue) { _, newValue in if newValue != localMax { localMax = newValue } }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label), min \(minValue), max \(maxValue)")
     }
@@ -84,7 +78,19 @@ struct MinMaxDoubleField: View {
             Slider(
                 value: sliderBinding(isMinColumn: isMinColumn),
                 in: effectiveRange,
-                onEditingChanged: { editing in if !editing { commit() } }
+                onEditingChanged: { editing in
+                    if editing {
+                        if isMinColumn { dragMin = minValue } else { dragMax = maxValue }
+                    } else {
+                        if isMinColumn {
+                            if let v = dragMin { setMin(v) }
+                            dragMin = nil
+                        } else {
+                            if let v = dragMax { setMax(v) }
+                            dragMax = nil
+                        }
+                    }
+                }
             )
             TextField(title, value: textBinding(isMinColumn: isMinColumn), format: .number.precision(.fractionLength(3)))
                 .textFieldStyle(.roundedBorder)
@@ -93,43 +99,35 @@ struct MinMaxDoubleField: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// Live slider binding: updates local state only (and keeps min ≤ max visually),
-    /// deferring the model write to `commit()` on release.
+    /// While dragging, reflects the transient local value; otherwise the model value
+    /// (so external mutations show up immediately).
     private func sliderBinding(isMinColumn: Bool) -> Binding<Double> {
         Binding(
-            get: { isMinColumn ? localMin : localMax },
+            get: { isMinColumn ? (dragMin ?? minValue) : (dragMax ?? maxValue) },
             set: { newValue in
-                if isMinColumn {
-                    localMin = newValue
-                    if localMin > localMax { localMax = localMin }
-                } else {
-                    localMax = newValue
-                    if localMax < localMin { localMin = localMax }
-                }
+                if isMinColumn { dragMin = newValue } else { dragMax = newValue }
             }
         )
     }
 
-    /// Text field binding: commits to the model immediately on edit (low frequency).
+    /// Text field reads/writes the model directly (low frequency, commits on return).
     private func textBinding(isMinColumn: Bool) -> Binding<Double> {
         Binding(
-            get: { isMinColumn ? localMin : localMax },
+            get: { isMinColumn ? minValue : maxValue },
             set: { newValue in
-                if isMinColumn {
-                    localMin = newValue
-                    if localMin > localMax { localMax = localMin }
-                } else {
-                    localMax = newValue
-                    if localMax < localMin { localMin = localMax }
-                }
-                commit()
+                if isMinColumn { setMin(newValue) } else { setMax(newValue) }
             }
         )
     }
 
-    private func commit() {
-        if minValue != localMin { minValue = localMin }
-        if maxValue != localMax { maxValue = localMax }
+    private func setMin(_ value: Double) {
+        minValue = value
+        if value > maxValue { maxValue = value }
+    }
+
+    private func setMax(_ value: Double) {
+        maxValue = value
+        if value < minValue { minValue = value }
     }
 }
 

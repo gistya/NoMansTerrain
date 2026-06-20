@@ -101,6 +101,10 @@ struct TerrainEditorDetailView: View {
     @State private var saveError: String?
     @State private var showSaveError = false
 
+    /// Source the "Lowest Mins"/"Highest Maxes" buttons pull from: the observed safe range
+    /// across existing terrains (false) or the absolute documented limits (true).
+    @AppStorage("terrainUseAbsoluteLimits") private var useAbsoluteLimits = false
+
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
         case general, noiseLayers, gridLayers, features, caves
 
@@ -122,7 +126,8 @@ struct TerrainEditorDetailView: View {
 
         Group {
             if let globalMin = catalog.globalMin, let globalMax = catalog.globalMax {
-                editorForm(session: session, globalMin: globalMin, globalMax: globalMax)
+                let (effMin, effMax) = applyLimitSource(globalMin, globalMax)
+                editorForm(session: session, globalMin: effMin, globalMax: effMax)
             } else if catalog.isLoading {
                 ProgressView("Loading terrain limits…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -169,10 +174,29 @@ struct TerrainEditorDetailView: View {
                 Text("Save failed").font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
+
+            Toggle("Absolute limits", isOn: $useAbsoluteLimits)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("When on, the Set Min/Max buttons snap fields to the absolute documented limits; when off, to the known-safe range observed across existing terrains.")
         }
         .animation(.snappy, value: autosaveStatus == .saving)
         .padding(.horizontal)
         .padding(.top)
+    }
+
+    /// Globals the Set Min/Max buttons pull from. Documented field ranges and randomize
+    /// already use the documented limits directly, so swapping these only changes the
+    /// "Lowest Mins"/"Highest Maxes" buttons' behavior.
+    private func applyLimitSource(
+        _ globalMin: TkVoxelGeneratorData,
+        _ globalMax: TkVoxelGeneratorData
+    ) -> (TkVoxelGeneratorData, TkVoxelGeneratorData) {
+        guard useAbsoluteLimits else { return (globalMin, globalMax) }
+        var mn = globalMin
+        var mx = globalMax
+        TerrainEditorOperations.applyAbsoluteBounds(min: &mn, max: &mx)
+        return (mn, mx)
     }
 
     @ViewBuilder

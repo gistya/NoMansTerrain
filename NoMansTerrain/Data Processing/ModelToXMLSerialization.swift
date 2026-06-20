@@ -28,7 +28,7 @@ enum NMSPropertySerializer {
     // MARK: - Combined settings file
 
     /// One terrain in the combined `cTkVoxelGeneratorSettingsArray` document.
-    struct CombinedEntry {
+    struct CombinedEntry: Sendable {
         let name: String
         let min: TkVoxelGeneratorData
         let max: TkVoxelGeneratorData

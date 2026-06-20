@@ -6,11 +6,13 @@ import AppKit
 
 private enum TerrainSidebarSelection: Hashable {
     case saved(PersistentIdentifier)
+    case folder(PersistentIdentifier)
 }
 
 struct TerrainEditorRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TerrainSetting.name) private var savedSettings: [TerrainSetting]
+    @Query(sort: \TerrainSettingsFolder.name) private var folders: [TerrainSettingsFolder]
 
     @State private var catalog = TerrainLimitsCatalog()
     @State private var selection: TerrainSidebarSelection?
@@ -95,6 +97,20 @@ struct TerrainEditorRootView: View {
 
     private var sidebar: some View {
         List(selection: $selection) {
+            if !folders.isEmpty {
+                Section("Folders") {
+                    ForEach(folders) { folder in
+                        TerrainSidebarRow(
+                            title: folder.name,
+                            subtitle: "\(folder.filledCount)/\(TerrainPreset.all.count) slots",
+                            systemImage: "folder"
+                        )
+                        .tag(TerrainSidebarSelection.folder(folder.persistentModelID))
+                    }
+                    .onDelete(perform: deleteFolders)
+                }
+            }
+
             Section("Saved") {
                 if filteredSettings.isEmpty {
                     ContentUnavailableView(
@@ -111,9 +127,10 @@ struct TerrainEditorRootView: View {
                     ForEach(filteredSettings) { setting in
                         TerrainSidebarRow(
                             title: setting.name,
-                            subtitle: setting.preset.displayName
+                            subtitle: setting.isCustom ? "Custom" : setting.preset.displayName
                         )
                         .tag(TerrainSidebarSelection.saved(setting.persistentModelID))
+                        .draggable(TerrainDragItem(terrainID: setting.persistentModelID))
                     }
                     .onDelete(perform: deleteSettings)
                 }
@@ -125,8 +142,10 @@ struct TerrainEditorRootView: View {
                 Menu {
                     Button("Blank (Safe Defaults)", systemImage: "doc") { showBlankSheet = true }
                     Button("From Preset…", systemImage: "mountain.2") { showNewSheet = true }
+                    Divider()
+                    Button("Folder", systemImage: "folder.badge.plus", action: createFolder)
                 } label: {
-                    Label("New Terrain", systemImage: "plus")
+                    Label("New", systemImage: "plus")
                 }
             }
 #if os(macOS)
@@ -197,14 +216,26 @@ struct TerrainEditorRootView: View {
 
     @ViewBuilder
     private var detailColumn: some View {
-        if let activeSession {
-            TerrainEditorDetailView(
-                session: activeSession,
-                catalog: catalog,
-                existingSetting: existingSetting(for: activeSessionKey)
-            )
-            .id(activeSessionKey)
-        } else {
+        switch selection {
+        case .saved:
+            if let activeSession {
+                TerrainEditorDetailView(
+                    session: activeSession,
+                    catalog: catalog,
+                    existingSetting: existingSetting(for: activeSessionKey)
+                )
+                .id(activeSessionKey)
+            } else {
+                emptyDetailPlaceholder
+            }
+        case .folder(let id):
+            if let folder = folders.first(where: { $0.persistentModelID == id }) {
+                TerrainFolderGridView(folder: folder, catalog: catalog)
+                    .id(id)
+            } else {
+                emptyDetailPlaceholder
+            }
+        case nil:
             emptyDetailPlaceholder
         }
     }
@@ -243,8 +274,30 @@ struct TerrainEditorRootView: View {
                 return
             }
             activeSession = TerrainEditorSession.fromSetting(setting)
-        case nil:
+        case .folder, nil:
             activeSession = nil
+        }
+    }
+
+    private func createFolder() {
+        let folder = TerrainSettingsFolder(name: "Terrain Set")
+        modelContext.insert(folder)
+        for order in 0..<TerrainPreset.all.count {
+            let slot = TerrainSlot(presetOrder: order)
+            slot.folder = folder
+            modelContext.insert(slot)
+        }
+        try? modelContext.save()
+        selection = .folder(folder.persistentModelID)
+    }
+
+    private func deleteFolders(at offsets: IndexSet) {
+        let foldersToDelete = offsets.map { folders[$0] }
+        for folder in foldersToDelete {
+            if case .folder(let id) = selection, id == folder.persistentModelID {
+                selection = nil
+            }
+            modelContext.delete(folder)
         }
     }
 

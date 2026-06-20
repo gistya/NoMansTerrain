@@ -14,7 +14,7 @@ struct NoMansTerrainApp: App {
         WindowGroup {
             MainTabView()
         }
-        .modelContainer(for: TerrainSetting.self)
+        .modelContainer(for: [TerrainSetting.self, TerrainSettingsFolder.self, TerrainSlot.self])
         .defaultSize(width: 1200, height: 800)
     }
 }

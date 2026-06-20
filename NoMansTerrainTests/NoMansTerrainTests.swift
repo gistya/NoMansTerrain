@@ -11,6 +11,9 @@ import SwiftData
 import Testing
 @testable import NoMansTerrain
 
+// Serialized: several tests build SwiftData `ModelContainer`s, which crash when created
+// concurrently under Swift Testing's default parallel execution.
+@Suite(.serialized)
 struct NoMansTerrainTests {
     private var terrainDirectory: URL {
         URL(fileURLWithPath: #filePath)
@@ -208,6 +211,26 @@ struct NoMansTerrainTests {
         #expect(maxData.seaLevel == aggregate.max.seaLevel)
     }
 
+    @Test
+    func absoluteBoundsSnapsDocumentedFieldsToLimits() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+        var minData = aggregate.min
+        var maxData = aggregate.max
+        TerrainEditorOperations.applyAbsoluteBounds(min: &minData, max: &maxData)
+
+        let docWidth = TerrainFieldDocLimits.UberLayer.width
+        #expect(minData.noiseLayers.base.width == docWidth.lowerBound)
+        #expect(maxData.noiseLayers.base.width == docWidth.upperBound)
+
+        let gridYaw = TerrainFieldDocLimits.Grid.yaw
+        #expect(minData.gridLayers.small.yaw == gridYaw.lowerBound)
+        #expect(maxData.gridLayers.small.yaw == gridYaw.upperBound)
+
+        // Undocumented root scalar is untouched.
+        #expect(minData.seaLevel == aggregate.min.seaLevel)
+        #expect(maxData.seaLevel == aggregate.max.seaLevel)
+    }
+
     @Test @MainActor
     func fullSettingsExportUsesOneTerrainForAllSlots() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
@@ -258,6 +281,134 @@ struct NoMansTerrainTests {
             #expect(FileManager.default.fileExists(atPath: url.path))
             #expect(try String(contentsOf: url, encoding: .utf8).contains("TkVoxelGeneratorData"))
         }
+    }
+
+    // MARK: - Terrain Settings folders
+
+    @MainActor
+    private func makeFolderContainer() throws -> ModelContainer {
+        try ModelContainer(
+            for: TerrainSetting.self, TerrainSettingsFolder.self, TerrainSlot.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+    }
+
+    @Test @MainActor
+    func folderWithMixedSlotsRoundTripsOnDisk() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        // On-disk store proves the additive 3-model schema actually loads.
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folder-store-\(UUID().uuidString).store")
+        let container = try ModelContainer(
+            for: TerrainSetting.self, TerrainSettingsFolder.self, TerrainSlot.self,
+            configurations: ModelConfiguration(url: storeURL)
+        )
+        let context = container.mainContext
+
+        let terrain = TerrainSetting(
+            name: "Linked", preset: preset,
+            min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max), isCustom: true
+        )
+        context.insert(terrain)
+
+        let folder = TerrainSettingsFolder(name: "Set")
+        context.insert(folder)
+        let s0 = TerrainSlot(presetOrder: 0); s0.folder = folder; context.insert(s0)
+        let s1 = TerrainSlot(presetOrder: 1); s1.folder = folder; context.insert(s1)
+        s0.link(to: terrain)
+        var snapMin = pair.min; snapMin.seaLevel = 99.0
+        s1.setSnapshot(min: snapMin, max: pair.max, label: "Snap")
+        try context.save()
+
+        let fetched = try #require(try context.fetch(FetchDescriptor<TerrainSettingsFolder>()).first)
+        let ordered = fetched.orderedSlots
+        #expect(ordered.count == 2)
+        #expect(ordered[0].isLinked)
+        #expect(ordered[0].linkedTerrain?.name == "Linked")
+        #expect(ordered[0].linkedTerrain?.isCustom == true)
+        #expect(ordered[0].resolvedMin?.seaLevel == pair.min.seaLevel)
+        #expect(ordered[1].isSnapshot)
+        #expect(ordered[1].resolvedMin?.seaLevel == 99.0)
+    }
+
+    @Test @MainActor
+    func deletingLinkedTerrainEmptiesItsSlots() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+        let container = try makeFolderContainer()
+        let context = container.mainContext
+
+        let terrain = TerrainSetting(name: "L", preset: preset, min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max))
+        context.insert(terrain)
+        let folder = TerrainSettingsFolder(name: "Set")
+        context.insert(folder)
+        let slot = TerrainSlot(presetOrder: 0); slot.folder = folder; context.insert(slot)
+        slot.link(to: terrain)
+        try context.save()
+        #expect(slot.isFilled)
+
+        context.delete(terrain)
+        try context.save()
+        #expect(!slot.isFilled)
+    }
+
+    @Test @MainActor
+    func folderExportEmitsGameOrderedSlots() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+        let container = try makeFolderContainer()
+        let context = container.mainContext
+
+        let folder = TerrainSettingsFolder(name: "Set")
+        context.insert(folder)
+        for order in 0..<TerrainPreset.all.count {
+            let slot = TerrainSlot(presetOrder: order); slot.folder = folder; context.insert(slot)
+            var minData = pair.min; minData.seaLevel = Double(order)  // unique per slot
+            slot.setSnapshot(min: minData, max: pair.max, label: "S\(order)")
+        }
+        try context.save()
+        #expect(folder.allFilled)
+
+        let entries = TerrainExportService.folderEntries(folder)
+        #expect(entries.count == TerrainPreset.all.count)
+        for (i, entry) in entries.enumerated() {
+            #expect(entry.name == TerrainPreset.all[i].fileBaseName)
+            #expect(entry.min.seaLevel == Double(i))
+        }
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folder-\(UUID().uuidString).MXML")
+        try NMSPropertySerializer.writeCombined(entries, to: url)
+        let xml = try String(contentsOf: url, encoding: .utf8)
+        #expect(xml.components(separatedBy: "value=\"TkVoxelGeneratorSettingsElement\"").count - 1 == TerrainPreset.all.count)
+        #expect(Foundation.XMLParser(data: Data(xml.utf8)).parse())
+    }
+
+    @Test @MainActor
+    func folderAllFilledGateFlipsOnlyWhenComplete() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+        let container = try makeFolderContainer()
+        let context = container.mainContext
+
+        let folder = TerrainSettingsFolder(name: "Set")
+        context.insert(folder)
+        var slots: [TerrainSlot] = []
+        for order in 0..<TerrainPreset.all.count {
+            let slot = TerrainSlot(presetOrder: order); slot.folder = folder; context.insert(slot)
+            slots.append(slot)
+        }
+        try context.save()
+        #expect(folder.filledCount == 0)
+        #expect(!folder.allFilled)
+
+        for (i, slot) in slots.enumerated() {
+            slot.setSnapshot(min: pair.min, max: pair.max, label: "x")
+            #expect(folder.allFilled == (i == slots.count - 1))
+        }
+        #expect(folder.filledCount == TerrainPreset.all.count)
     }
 
     @Test @MainActor
