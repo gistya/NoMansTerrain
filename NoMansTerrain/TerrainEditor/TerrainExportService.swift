@@ -24,6 +24,48 @@ enum TerrainExportService {
         let pair = try await writeXMLPair(preset: preset, minData: minData, maxData: maxData, to: directory)
         return [pair.minURL, pair.maxURL]
     }
+
+    // MARK: - Single-terrain export (Workflow A)
+
+    /// Writes one terrain as a `<Name>_Min.xml` / `<Name>_Max.xml` pair directly into
+    /// `directory`, named after the (sanitized) terrain name. Returns the two URLs.
+    @discardableResult
+    static func writeNamedSplitPair(
+        name: String,
+        minData: TkVoxelGeneratorData,
+        maxData: TkVoxelGeneratorData,
+        to directory: URL
+    ) throws -> [URL] {
+        let base = sanitizedFileName(name)
+        let minURL = directory.appendingPathComponent("\(base)_Min.xml")
+        let maxURL = directory.appendingPathComponent("\(base)_Max.xml")
+        try NMSPropertySerializer.write(limit: .min, minData, to: minURL)
+        try NMSPropertySerializer.write(limit: .max, maxData, to: maxURL)
+        return [minURL, maxURL]
+    }
+
+    /// Writes a full `voxelgeneratorsettings.MXML` where **every** preset slot uses this
+    /// single terrain's Min/Max — so every planet in-game renders the terrain under
+    /// development. Slots are emitted in game order via `TerrainPreset.all`.
+    static func writeFullSettings(
+        minData: TkVoxelGeneratorData,
+        maxData: TkVoxelGeneratorData,
+        to url: URL
+    ) throws {
+        let entries = TerrainPreset.all.map {
+            NMSPropertySerializer.CombinedEntry(name: $0.fileBaseName, min: minData, max: maxData)
+        }
+        try NMSPropertySerializer.writeCombined(entries, to: url)
+    }
+
+    /// Filesystem-safe base name derived from a user terrain name (e.g. "My Cool World"
+    /// → "MyCoolWorld"). Falls back to "Terrain" when empty.
+    static func sanitizedFileName(_ name: String) -> String {
+        let allowed = CharacterSet.alphanumerics
+        let mapped = name.unicodeScalars.map { allowed.contains($0) ? Character($0) : " " }
+        let collapsed = String(mapped).split(separator: " ").joined()
+        return collapsed.isEmpty ? "Terrain" : collapsed
+    }
 }
 
 /// Generates a randomized Min/Max terrain pair for every preset and writes them to

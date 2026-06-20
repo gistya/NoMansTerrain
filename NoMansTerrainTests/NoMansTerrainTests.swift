@@ -186,6 +186,107 @@ struct NoMansTerrainTests {
         #expect(waterWorld.first?.category == .prime)
     }
 
+    // MARK: - Workflow A
+
+    @Test @MainActor
+    func safeDefaultsWidenToWidestOfAggregatedAndDocumented() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+
+        var minData = aggregate.min
+        var maxData = aggregate.max
+        TerrainEditorOperations.applySafeDefaults(min: &minData, max: &maxData)
+
+        // Documented field (UberLayer.width = 0...9999): widened to the lower/higher of
+        // the aggregated value and the documented bound.
+        let docWidth = TerrainFieldDocLimits.UberLayer.width
+        #expect(minData.noiseLayers.base.width == Swift.min(aggregate.min.noiseLayers.base.width, docWidth.lowerBound))
+        #expect(maxData.noiseLayers.base.width == Swift.max(aggregate.max.noiseLayers.base.width, docWidth.upperBound))
+        #expect(minData.noiseLayers.base.width <= maxData.noiseLayers.base.width)
+
+        // Undocumented root scalar is left at the aggregated value.
+        #expect(minData.seaLevel == aggregate.min.seaLevel)
+        #expect(maxData.seaLevel == aggregate.max.seaLevel)
+    }
+
+    @Test @MainActor
+    func fullSettingsExportUsesOneTerrainForAllSlots() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        var minData = pair.min; minData.seaLevel = 123.456
+        var maxData = pair.max; maxData.seaLevel = 789.012
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("full-\(UUID().uuidString).MXML")
+        try TerrainExportService.writeFullSettings(minData: minData, maxData: maxData, to: url)
+
+        let xml = try String(contentsOf: url, encoding: .utf8)
+        let elementCount = xml.components(separatedBy: "value=\"TkVoxelGeneratorSettingsElement\"").count - 1
+        #expect(elementCount == TerrainPreset.all.count)
+
+        // The single terrain's Min/Max sea level appears once per slot.
+        let minLine = "name=\"SeaLevel\" value=\"\(String(format: "%.6f", 123.456))\""
+        let maxLine = "name=\"SeaLevel\" value=\"\(String(format: "%.6f", 789.012))\""
+        #expect(xml.components(separatedBy: minLine).count - 1 == TerrainPreset.all.count)
+        #expect(xml.components(separatedBy: maxLine).count - 1 == TerrainPreset.all.count)
+
+        // Game order preserved (FloatingIslands before GrandCanyon) and Waterworld guarded.
+        let fi = try #require(xml.range(of: "name=\"FloatingIslands\" value=\"TkVoxelGeneratorSettingsElement\""))
+        let gc = try #require(xml.range(of: "name=\"GrandCanyon\" value=\"TkVoxelGeneratorSettingsElement\""))
+        #expect(fi.lowerBound < gc.lowerBound)
+        #expect(xml.contains("name=\"WaterworldPrime\""))
+        #expect(!xml.contains("name=\"Waterworld\""))
+
+        #expect(Foundation.XMLParser(data: Data(xml.utf8)).parse())
+    }
+
+    @Test
+    func namedSplitExportWritesFilesNamedAfterTerrain() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("split-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let urls = try TerrainExportService.writeNamedSplitPair(
+            name: "My Cool World", minData: pair.min, maxData: pair.max, to: dir
+        )
+
+        #expect(urls.map(\.lastPathComponent) == ["MyCoolWorld_Min.xml", "MyCoolWorld_Max.xml"])
+        for url in urls {
+            #expect(FileManager.default.fileExists(atPath: url.path))
+            #expect(try String(contentsOf: url, encoding: .utf8).contains("TkVoxelGeneratorData"))
+        }
+    }
+
+    @Test @MainActor
+    func sessionApplyPersistsEditsToSetting() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        let container = try ModelContainer(
+            for: TerrainSetting.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let setting = TerrainSetting(
+            name: "Auto", preset: preset,
+            min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max)
+        )
+        context.insert(setting)
+        try context.save()
+
+        // Mimic the autosave path: edit the session, apply to the backing setting, save.
+        let session = TerrainEditorSession.fromSetting(setting)
+        session.minDataBinding.nested(\.seaLevel).wrappedValue = 42.5
+        session.apply(to: setting)
+        try context.save()
+
+        let fetched = try #require(try context.fetch(FetchDescriptor<TerrainSetting>()).first)
+        #expect(fetched.sendableMin.seaLevel == 42.5)
+    }
+
     @Test @MainActor
     func activateAllTurnsOnEveryActiveToggle() async throws {
         let fileLoader = FileLoader()

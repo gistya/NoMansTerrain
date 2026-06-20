@@ -92,6 +92,142 @@ enum TerrainEditorOperations {
         data.caves.underground.tunnel.active = true
     }
 
+    // MARK: - Safe defaults
+
+    /// Widens an aggregated min/max pair so each documented field spans the *wider* of
+    /// the aggregated envelope and its documented limit (min = lower of the two, max =
+    /// higher of the two). Call with `min` seeded from the bundle's aggregated globalMin
+    /// and `max` from globalMax; fields without a documented limit (and all enums, bools,
+    /// and seeds) are left at the aggregated values already present.
+    static func applySafeDefaults(min: inout TkVoxelGeneratorData, max: inout TkVoxelGeneratorData) {
+        // Root scalars (seaLevel, beachHeight, …) have no documented limits — leave them.
+
+        let noiseLayers: [WritableKeyPath<NoiseLayers, TkNoiseUberLayerData>] = [
+            \.base, \.hill, \.mountain, \.rock, \.underWater, \.texture, \.elevation, \.continent
+        ]
+        for keyPath in noiseLayers {
+            widenUberLayer(min: &min.noiseLayers[keyPath: keyPath], max: &max.noiseLayers[keyPath: keyPath])
+        }
+
+        let gridLayers: [WritableKeyPath<GridLayers, TkNoiseGridData>] = [
+            \.small, \.large,
+            \.resourcesHeridium, \.resourcesIridium, \.resourcesCopper, \.resourcesNickel,
+            \.resourcesAluminium, \.resourcesGold, \.resourcesEmeril
+        ]
+        for keyPath in gridLayers {
+            widenGrid(min: &min.gridLayers[keyPath: keyPath], max: &max.gridLayers[keyPath: keyPath])
+        }
+
+        let features: [WritableKeyPath<Features, TkNoiseFeatureData>] = [
+            \.river, \.crater, \.arches, \.archesSmall, \.blobs, \.blobsSmall, \.substance
+        ]
+        for keyPath in features {
+            widenFeature(min: &min.features[keyPath: keyPath], max: &max.features[keyPath: keyPath])
+        }
+
+        widenFeature(min: &min.caves.underground.mouth, max: &max.caves.underground.mouth)
+        widenFeature(min: &min.caves.underground.tunnel, max: &max.caves.underground.tunnel)
+    }
+
+    private static func widenUberData(min: inout TkNoiseUberData, max: inout TkNoiseUberData) {
+        widen(&min.octaves, &max.octaves, TerrainFieldDocLimits.UberData.octaves)
+        widen(&min.slopeGain, &max.slopeGain, TerrainFieldDocLimits.UberData.slopeGain)
+        widen(&min.slopeBias, &max.slopeBias, TerrainFieldDocLimits.UberData.slopeBias)
+        widen(&min.sharpToRoundFeatures, &max.sharpToRoundFeatures, TerrainFieldDocLimits.UberData.sharpToRoundFeatures)
+        widen(&min.amplifyFeatures, &max.amplifyFeatures, TerrainFieldDocLimits.UberData.amplifyFeatures)
+        widen(&min.perturbFeatures, &max.perturbFeatures, TerrainFieldDocLimits.UberData.perturbFeatures)
+        widen(&min.altitudeErosion, &max.altitudeErosion, TerrainFieldDocLimits.UberData.altitudeErosion)
+        widen(&min.ridgeErosion, &max.ridgeErosion, TerrainFieldDocLimits.UberData.ridgeErosion)
+        widen(&min.slopeErosion, &max.slopeErosion, TerrainFieldDocLimits.UberData.slopeErosion)
+        widen(&min.lacunarity, &max.lacunarity, TerrainFieldDocLimits.UberData.lacunarity)
+        widen(&min.gain, &max.gain, TerrainFieldDocLimits.UberData.gain)
+        widen(&min.remapFromMin, &max.remapFromMin, TerrainFieldDocLimits.UberData.remapFromMin)
+        widen(&min.remapFromMax, &max.remapFromMax, TerrainFieldDocLimits.UberData.remapFromMax)
+        widen(&min.remapToMin, &max.remapToMin, TerrainFieldDocLimits.UberData.remapToMin)
+        widen(&min.remapToMax, &max.remapToMax, TerrainFieldDocLimits.UberData.remapToMax)
+    }
+
+    private static func widenUberLayer(min: inout TkNoiseUberLayerData, max: inout TkNoiseUberLayerData) {
+        widenUberData(min: &min.noiseData, max: &max.noiseData)
+        widen(&min.maximumLOD, &max.maximumLOD, TerrainFieldDocLimits.UberLayer.maximumLOD)
+        widen(&min.height, &max.height, TerrainFieldDocLimits.UberLayer.height)
+        widen(&min.width, &max.width, TerrainFieldDocLimits.UberLayer.width)
+        widen(&min.regionRatio, &max.regionRatio, TerrainFieldDocLimits.UberLayer.regionRatio)
+        widen(&min.regionScale, &max.regionScale, TerrainFieldDocLimits.UberLayer.regionScale)
+        widen(&min.regionGain, &max.regionGain, TerrainFieldDocLimits.UberLayer.regionGain)
+        widen(&min.smoothRadius, &max.smoothRadius, TerrainFieldDocLimits.UberLayer.smoothRadius)
+        widen(&min.heightOffset, &max.heightOffset, TerrainFieldDocLimits.UberLayer.heightOffset)
+        widen(&min.plateauStratas, &max.plateauStratas, TerrainFieldDocLimits.UberLayer.plateauStratas)
+        widen(&min.plateauSharpness, &max.plateauSharpness, TerrainFieldDocLimits.UberLayer.plateauSharpness)
+        widen(&min.plateauRegionSize, &max.plateauRegionSize, TerrainFieldDocLimits.UberLayer.plateauRegionSize)
+        widen(&min.seedOffset, &max.seedOffset, TerrainFieldDocLimits.UberLayer.seedOffset)
+        widen(&min.tileBlendMeters, &max.tileBlendMeters, TerrainFieldDocLimits.UberLayer.tileBlendMeters)
+    }
+
+    private static func widenGrid(min: inout TkNoiseGridData, max: inout TkNoiseGridData) {
+        widen(&min.maximumLOD, &max.maximumLOD, TerrainFieldDocLimits.Grid.maximumLOD)
+        widen(&min.minWidth, &max.minWidth, TerrainFieldDocLimits.Grid.minWidth)
+        widen(&min.maxWidth, &max.maxWidth, TerrainFieldDocLimits.Grid.maxWidth)
+        widen(&min.minHeight, &max.minHeight, TerrainFieldDocLimits.Grid.minHeight)
+        widen(&min.maxHeight, &max.maxHeight, TerrainFieldDocLimits.Grid.maxHeight)
+        widen(&min.minHeightOffset, &max.minHeightOffset, TerrainFieldDocLimits.Grid.minHeightOffset)
+        widen(&min.maxHeightOffset, &max.maxHeightOffset, TerrainFieldDocLimits.Grid.maxHeightOffset)
+        widen(&min.heightOffset, &max.heightOffset, TerrainFieldDocLimits.Grid.heightOffset)
+        widen(&min.regionRatio, &max.regionRatio, TerrainFieldDocLimits.Grid.regionRatio)
+        widen(&min.regionScale, &max.regionScale, TerrainFieldDocLimits.Grid.regionScale)
+        widen(&min.yaw, &max.yaw, TerrainFieldDocLimits.Grid.yaw)
+        widen(&min.pitch, &max.pitch, TerrainFieldDocLimits.Grid.pitch)
+        widen(&min.roll, &max.roll, TerrainFieldDocLimits.Grid.roll)
+        widen(&min.varyYaw, &max.varyYaw, TerrainFieldDocLimits.Grid.varyYaw)
+        widen(&min.varyPitch, &max.varyPitch, TerrainFieldDocLimits.Grid.varyPitch)
+        widen(&min.varyRoll, &max.varyRoll, TerrainFieldDocLimits.Grid.varyRoll)
+        widen(&min.smoothRadius, &max.smoothRadius, TerrainFieldDocLimits.Grid.smoothRadius)
+        widen(&min.randomPrimitive, &max.randomPrimitive, TerrainFieldDocLimits.Grid.randomPrimitive)
+        widen(&min.tileBlendMeters, &max.tileBlendMeters, TerrainFieldDocLimits.Grid.tileBlendMeters)
+        widenUberLayer(min: &min.turbulenceNoiseLayer, max: &max.turbulenceNoiseLayer)
+        widenSuperFormula(min: &min.superFormula1, max: &max.superFormula1)
+        widenSuperFormula(min: &min.superFormula2, max: &max.superFormula2)
+        widenSuperPrimitive(min: &min.superPrimitive, max: &max.superPrimitive)
+    }
+
+    private static func widenFeature(min: inout TkNoiseFeatureData, max: inout TkNoiseFeatureData) {
+        widen(&min.width, &max.width, TerrainFieldDocLimits.Feature.width)
+        widen(&min.height, &max.height, TerrainFieldDocLimits.Feature.height)
+        widen(&min.regionSize, &max.regionSize, TerrainFieldDocLimits.Feature.regionSize)
+        widen(&min.ratio, &max.ratio, TerrainFieldDocLimits.Feature.ratio)
+        widen(&min.heightVarianceAmplitude, &max.heightVarianceAmplitude, TerrainFieldDocLimits.Feature.heightVarianceAmplitude)
+        widen(&min.heightVarianceFrequency, &max.heightVarianceFrequency, TerrainFieldDocLimits.Feature.heightVarianceFrequency)
+        widen(&min.heightOffset, &max.heightOffset, TerrainFieldDocLimits.Feature.heightOffset)
+        widen(&min.tileBlendMeters, &max.tileBlendMeters, TerrainFieldDocLimits.Feature.tileBlendMeters)
+    }
+
+    private static func widenSuperFormula(min: inout TkNoiseSuperFormulaData, max: inout TkNoiseSuperFormulaData) {
+        widen(&min.formM, &max.formM, TerrainFieldDocLimits.SuperFormula.formM)
+        widen(&min.formN1, &max.formN1, TerrainFieldDocLimits.SuperFormula.formN1)
+        widen(&min.formN2, &max.formN2, TerrainFieldDocLimits.SuperFormula.formN2)
+        widen(&min.formN3, &max.formN3, TerrainFieldDocLimits.SuperFormula.formN3)
+    }
+
+    private static func widenSuperPrimitive(min: inout TkNoiseSuperPrimitiveData, max: inout TkNoiseSuperPrimitiveData) {
+        widen(&min.width, &max.width, TerrainFieldDocLimits.SuperPrimitive.width)
+        widen(&min.height, &max.height, TerrainFieldDocLimits.SuperPrimitive.height)
+        widen(&min.depth, &max.depth, TerrainFieldDocLimits.SuperPrimitive.depth)
+        widen(&min.thickness, &max.thickness, TerrainFieldDocLimits.SuperPrimitive.thickness)
+        widen(&min.cornerRadiusXY, &max.cornerRadiusXY, TerrainFieldDocLimits.SuperPrimitive.cornerRadiusXY)
+        widen(&min.cornerRadiusZ, &max.cornerRadiusZ, TerrainFieldDocLimits.SuperPrimitive.cornerRadiusZ)
+        widen(&min.bottomRadiusOffset, &max.bottomRadiusOffset, TerrainFieldDocLimits.SuperPrimitive.bottomRadiusOffset)
+    }
+
+    private static func widen(_ minValue: inout Double, _ maxValue: inout Double, _ documented: ClosedRange<Double>) {
+        minValue = Swift.min(minValue, documented.lowerBound)
+        maxValue = Swift.max(maxValue, documented.upperBound)
+    }
+
+    private static func widen(_ minValue: inout Int, _ maxValue: inout Int, _ documented: ClosedRange<Int>) {
+        minValue = Swift.min(minValue, documented.lowerBound)
+        maxValue = Swift.max(maxValue, documented.upperBound)
+    }
+
     // MARK: - Randomize
 
     static func randomizeRootScalars(

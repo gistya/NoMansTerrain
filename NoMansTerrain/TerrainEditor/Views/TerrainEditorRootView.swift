@@ -5,7 +5,6 @@ import AppKit
 #endif
 
 private enum TerrainSidebarSelection: Hashable {
-    case draft
     case saved(PersistentIdentifier)
 }
 
@@ -15,10 +14,10 @@ struct TerrainEditorRootView: View {
 
     @State private var catalog = TerrainLimitsCatalog()
     @State private var selection: TerrainSidebarSelection?
-    @State private var draftSession: TerrainEditorSession?
     @State private var activeSession: TerrainEditorSession?
     @State private var activeSessionKey: TerrainSidebarSelection?
     @State private var showNewSheet = false
+    @State private var showBlankSheet = false
     @State private var searchText = ""
 
     @State private var isGenerating = false
@@ -50,12 +49,14 @@ struct TerrainEditorRootView: View {
         .sheet(isPresented: $showNewSheet) {
             NewTerrainDocumentSheet(
                 catalog: catalog,
-                onCreate: { session in
-                    draftSession = session
-                    activeSession = session
-                    activeSessionKey = .draft
-                    selection = .draft
-                }
+                onCreate: { persistNewSession($0) }
+            )
+            .terrainFormPresentationSizing()
+        }
+        .sheet(isPresented: $showBlankSheet) {
+            NewBlankTerrainSheet(
+                catalog: catalog,
+                onCreate: { persistNewSession($0) }
             )
             .terrainFormPresentationSizing()
         }
@@ -94,15 +95,6 @@ struct TerrainEditorRootView: View {
 
     private var sidebar: some View {
         List(selection: $selection) {
-            if let draftSession {
-                TerrainSidebarRow(
-                    title: draftSession.name,
-                    subtitle: "Unsaved draft",
-                    systemImage: "doc.badge.plus"
-                )
-                .tag(TerrainSidebarSelection.draft)
-            }
-
             Section("Saved") {
                 if filteredSettings.isEmpty {
                     ContentUnavailableView(
@@ -110,7 +102,7 @@ struct TerrainEditorRootView: View {
                         systemImage: searchText.isEmpty ? "tray" : "magnifyingglass",
                         description: Text(
                             searchText.isEmpty
-                                ? "Create a terrain from a bundle preset to get started."
+                                ? "Use New ▸ Blank (Safe Defaults) to create your first terrain."
                                 : "No terrains match \"\(searchText)\"."
                         )
                     )
@@ -130,8 +122,9 @@ struct TerrainEditorRootView: View {
         .searchable(text: $searchText, prompt: "Search terrains")
         .toolbar {
             ToolbarItem {
-                Button {
-                    showNewSheet = true
+                Menu {
+                    Button("Blank (Safe Defaults)", systemImage: "doc") { showBlankSheet = true }
+                    Button("From Preset…", systemImage: "mountain.2") { showNewSheet = true }
                 } label: {
                     Label("New Terrain", systemImage: "plus")
                 }
@@ -208,12 +201,7 @@ struct TerrainEditorRootView: View {
             TerrainEditorDetailView(
                 session: activeSession,
                 catalog: catalog,
-                existingSetting: existingSetting(for: activeSessionKey),
-                onSave: { saved in
-                    selection = .saved(saved.persistentModelID)
-                    activeSessionKey = .saved(saved.persistentModelID)
-                    draftSession = nil
-                }
+                existingSetting: existingSetting(for: activeSessionKey)
             )
             .id(activeSessionKey)
         } else {
@@ -225,8 +213,23 @@ struct TerrainEditorRootView: View {
         ContentUnavailableView(
             "Select or Create Terrain",
             systemImage: "mountain.2",
-            description: Text("Load a min/max pair from the bundle or open a saved terrain document.")
+            description: Text("Pick a saved terrain, or use New ▸ Blank (Safe Defaults) to create one.")
         )
+    }
+
+    /// Persists a freshly created terrain immediately so it appears in the sidebar and
+    /// can't be lost, then selects it (the detail view reloads from the saved record and
+    /// autosaves subsequent edits).
+    private func persistNewSession(_ session: TerrainEditorSession) {
+        let setting = TerrainSetting(
+            name: session.name,
+            preset: session.preset,
+            min: TerrainMin(min: session.minData),
+            max: TerrainMax(max: session.maxData)
+        )
+        modelContext.insert(setting)
+        try? modelContext.save()
+        selection = .saved(setting.persistentModelID)
     }
 
     private func loadActiveSession(for selection: TerrainSidebarSelection?) {
@@ -234,8 +237,6 @@ struct TerrainEditorRootView: View {
         activeSessionKey = selection
 
         switch selection {
-        case .draft:
-            activeSession = draftSession
         case .saved(let id):
             guard let setting = savedSettings.first(where: { $0.persistentModelID == id }) else {
                 activeSession = nil
@@ -256,7 +257,7 @@ struct TerrainEditorRootView: View {
         let settingsToDelete = offsets.map { filteredSettings[$0] }
         for setting in settingsToDelete {
             if case .saved(let id) = selection, id == setting.persistentModelID {
-                selection = draftSession != nil ? .draft : nil
+                selection = nil
             }
             modelContext.delete(setting)
         }
@@ -347,6 +348,92 @@ struct NewTerrainDocumentSheet: View {
             } catch {
                 errorMessage = error.localizedDescription
             }
+            isLoading = false
+        }
+    }
+}
+
+/// Creates a brand-new terrain seeded with known-safe defaults (Workflow A): the widest
+/// of the aggregated and documented limits on every field. Only a name is required.
+struct NewBlankTerrainSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let catalog: TerrainLimitsCatalog
+    let onCreate: (TerrainEditorSession) -> Void
+
+    @State private var name = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Document") {
+                    TextField("Name", text: $name)
+                        .writingToolsBehavior(.limited)
+                }
+
+                Section {
+                    Text("Starts every field at its widest known-safe range, ready to tweak. Changes are saved automatically.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("New Blank Terrain")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { createDocument() }
+                        .disabled(trimmedName.isEmpty || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    TerrainLoadingOverlay(message: "Preparing terrain…")
+                }
+            }
+        }
+        .frame(minWidth: 360, minHeight: 240)
+    }
+
+    private func createDocument() {
+        isLoading = true
+        errorMessage = nil
+
+        Task { @MainActor in
+            await catalog.loadIfNeeded()
+            guard let globalMin = catalog.globalMin, let globalMax = catalog.globalMax else {
+                errorMessage = catalog.loadError ?? "Terrain limits are unavailable."
+                isLoading = false
+                return
+            }
+
+            var minData = globalMin
+            var maxData = globalMax
+            TerrainEditorOperations.applySafeDefaults(min: &minData, max: &maxData)
+
+            let session = TerrainEditorSession(
+                name: trimmedName,
+                preset: TerrainPreset(kind: .floatingIslands, category: .standard),
+                minData: minData,
+                maxData: maxData
+            )
+            onCreate(session)
+            dismiss()
             isLoading = false
         }
     }
