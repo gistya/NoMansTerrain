@@ -1,6 +1,6 @@
 import Foundation
 
-struct TkNoiseCaveData: Codable {
+struct TkNoiseCaveData: Codable, Equatable {
     var mouth: TkNoiseFeatureData
     var tunnel: TkNoiseFeatureData
 

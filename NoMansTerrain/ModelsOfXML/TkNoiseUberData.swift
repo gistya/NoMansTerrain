@@ -1,6 +1,6 @@
 import Foundation
 
-struct TkNoiseUberData: Codable {
+struct TkNoiseUberData: Codable, Equatable {
     /// 0...10
     var octaves: Int
     /// 0.0...1.0

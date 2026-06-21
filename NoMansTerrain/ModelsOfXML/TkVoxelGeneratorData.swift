@@ -1,6 +1,6 @@
 import Foundation
 
-struct NoiseLayers: Codable {
+struct NoiseLayers: Codable, Equatable {
     var base: TkNoiseUberLayerData
     var hill: TkNoiseUberLayerData
     var mountain: TkNoiseUberLayerData
@@ -22,7 +22,7 @@ struct NoiseLayers: Codable {
     }
 }
 
-struct GridLayers: Codable {
+struct GridLayers: Codable, Equatable {
     var small: TkNoiseGridData
     var large: TkNoiseGridData
     var resourcesHeridium: TkNoiseGridData
@@ -46,7 +46,7 @@ struct GridLayers: Codable {
     }
 }
 
-struct Features: Codable {
+struct Features: Codable, Equatable {
     var river: TkNoiseFeatureData
     var crater: TkNoiseFeatureData
     var arches: TkNoiseFeatureData
@@ -66,7 +66,7 @@ struct Features: Codable {
     }
 }
 
-struct Caves: Codable {
+struct Caves: Codable, Equatable {
     var underground: TkNoiseCaveData
 
     enum CodingKeys: String, CodingKey {
@@ -119,7 +119,7 @@ struct BaseSeed: Codable, Equatable {
     }
 }
 
-struct TkVoxelGeneratorData: Codable {
+struct TkVoxelGeneratorData: Codable, Equatable {
     var baseSeed: BaseSeed
     var seaLevel: Double
     var beachHeight: Double
@@ -160,7 +160,7 @@ struct TkVoxelGeneratorData: Codable {
 }
 
 /// Root wrapper for Min terrain XML files (e.g. Alien_Min.xml).
-struct TerrainMinDocument: Codable {
+struct TerrainMinDocument: Codable, Equatable {
     var min: TkVoxelGeneratorData
 
     enum CodingKeys: String, CodingKey {

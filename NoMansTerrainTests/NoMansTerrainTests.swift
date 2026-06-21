@@ -411,6 +411,48 @@ struct NoMansTerrainTests {
         #expect(folder.filledCount == TerrainPreset.all.count)
     }
 
+    @Test
+    func changedSectionsDetectsOnlyEditedSection() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        var gridEdit = pair.min
+        gridEdit.gridLayers.small.yaw += 10
+        #expect(Set(TerrainSetting.changedSections(old: pair.min, new: gridEdit).keys) == [.grid])
+
+        var rootEdit = pair.min
+        rootEdit.seaLevel += 1
+        #expect(Set(TerrainSetting.changedSections(old: pair.min, new: rootEdit).keys) == [.root])
+
+        #expect(TerrainSetting.changedSections(old: pair.min, new: pair.min).isEmpty)
+    }
+
+    @Test @MainActor
+    func granularSectionWritePersistsAndLeavesOthersIntact() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+        let container = try makeFolderContainer()
+        let context = container.mainContext
+
+        let setting = TerrainSetting(
+            name: "S", preset: preset,
+            min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max)
+        )
+        context.insert(setting)
+        try context.save()
+
+        var edited = pair.min
+        edited.gridLayers.small.yaw = 42
+        setting.applySections(TerrainSetting.changedSections(old: pair.min, new: edited), to: .min)
+        try context.save()
+
+        let reloaded = try #require(try context.fetch(FetchDescriptor<TerrainSetting>()).first)
+        #expect(reloaded.sendableMin.gridLayers.small.yaw == 42)
+        // Untouched sections survive the granular write.
+        #expect(reloaded.sendableMin.noiseLayers.base.height == pair.min.noiseLayers.base.height)
+        #expect(reloaded.sendableMax.seaLevel == pair.max.seaLevel)
+    }
+
     @Test @MainActor
     func sessionApplyPersistsEditsToSetting() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)

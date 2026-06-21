@@ -1,6 +1,6 @@
 import Foundation
 
-struct TkNoiseUberLayerData: Codable {
+struct TkNoiseUberLayerData: Codable, Equatable {
     var noiseData: TkNoiseUberData
     var active: Bool
     /// 1...4

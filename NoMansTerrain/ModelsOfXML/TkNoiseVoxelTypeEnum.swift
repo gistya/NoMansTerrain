@@ -1,6 +1,6 @@
 import Foundation
 
-struct TkNoiseVoxelTypeEnum: Codable {
+struct TkNoiseVoxelTypeEnum: Codable, Equatable {
     var noiseVoxelType: NoiseVoxelType
 
     enum CodingKeys: String, CodingKey {

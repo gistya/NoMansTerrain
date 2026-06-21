@@ -14,11 +14,18 @@ final class TerrainEditorSession {
     /// (Int-compare) trigger to schedule an autosave without diffing the huge data structs.
     var revision = 0
 
+    /// Snapshot of what's currently persisted, so autosave can diff sections and write
+    /// only the ones that changed. Not observed (no view depends on it).
+    @ObservationIgnored var lastPersistedMin: TkVoxelGeneratorData
+    @ObservationIgnored var lastPersistedMax: TkVoxelGeneratorData
+
     init(name: String, preset: TerrainPreset, minData: TkVoxelGeneratorData, maxData: TkVoxelGeneratorData) {
         self.name = name
         self.preset = preset
         self.minData = minData
         self.maxData = maxData
+        self.lastPersistedMin = minData
+        self.lastPersistedMax = maxData
     }
 
     static func fromBundle(preset: TerrainPreset, pair: SendableTerrain) -> TerrainEditorSession {
@@ -42,8 +49,7 @@ final class TerrainEditorSession {
     func apply(to setting: TerrainSetting) {
         setting.name = name
         setting.preset = preset
-        setting.min = TerrainMin(min: minData)
-        setting.max = TerrainMax(max: maxData)
+        setting.replaceAllSections(min: minData, max: maxData)
     }
 
     var nameBinding: Binding<String> {
@@ -297,16 +303,37 @@ struct TerrainEditorDetailView: View {
     }
 
     private func commitAutosave() {
-        guard let existingSetting else { return }
-        session.apply(to: existingSetting)
-        do {
-            try modelContext.save()
-            session.isDirty = false
-            autosaveStatus = .saved
-        } catch {
-            autosaveStatus = .failed
-            saveError = error.localizedDescription
-            showSaveError = true
+        guard let setting = existingSetting else { return }
+        let name = session.name
+        let preset = session.preset
+        let curMin = session.minData
+        let curMax = session.maxData
+        let lastMin = session.lastPersistedMin
+        let lastMax = session.lastPersistedMax
+
+        Task {
+            // Heavy part off the main thread: diff sections and encode only what changed.
+            let (minChanges, maxChanges) = await Task.detached(priority: .userInitiated) {
+                (TerrainSetting.changedSections(old: lastMin, new: curMin),
+                 TerrainSetting.changedSections(old: lastMax, new: curMax))
+            }.value
+
+            // Back on the main actor: assign the few changed columns and save.
+            setting.name = name
+            setting.preset = preset
+            setting.applySections(minChanges, to: .min)
+            setting.applySections(maxChanges, to: .max)
+            do {
+                try modelContext.save()
+                session.lastPersistedMin = curMin
+                session.lastPersistedMax = curMax
+                session.isDirty = false
+                autosaveStatus = .saved
+            } catch {
+                autosaveStatus = .failed
+                saveError = error.localizedDescription
+                showSaveError = true
+            }
         }
     }
 

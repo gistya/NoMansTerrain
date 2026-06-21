@@ -1,6 +1,6 @@
 import Foundation
 
-struct TkNoiseFeatureData: Codable {
+struct TkNoiseFeatureData: Codable, Equatable {
     var active: Bool
     var maximumLOD: Int
     var subtract: Bool
