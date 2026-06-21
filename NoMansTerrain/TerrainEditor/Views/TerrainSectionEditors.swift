@@ -148,6 +148,8 @@ struct UberLayerEditorContent: View {
     let globalMin: TkNoiseUberLayerData
     let globalMax: TkNoiseUberLayerData
 
+    @State private var showNoiseData = false
+
     var body: some View {
         Section {
             SectionActionBar(
@@ -166,7 +168,7 @@ struct UberLayerEditorContent: View {
             )
         }
 
-        Section("Noise Data") {
+        Section("Noise Data", isExpanded: $showNoiseData) {
             UberDataEditorContent(
                 minData: $minLayer.nested(\.noiseData),
                 maxData: $maxLayer.nested(\.noiseData),
@@ -271,6 +273,14 @@ struct GridLayerEditorContent: View {
     let globalMin: TkNoiseGridData
     let globalMax: TkNoiseGridData
 
+    // Heavy/advanced sub-sections are collapsed by default. Collapsed Form sections aren't
+    // realized, so the Grid tab keeps far fewer live controls on screen — which is what
+    // makes two-finger scrolling smooth (fewer controls to hit-test under the pointer).
+    @State private var showTurbulence = false
+    @State private var showSuperFormula1 = false
+    @State private var showSuperFormula2 = false
+    @State private var showSuperPrimitive = false
+
     var body: some View {
         Section {
             SectionActionBar(
@@ -307,7 +317,7 @@ struct GridLayerEditorContent: View {
             MinMaxDoubleField(label: "Region Scale", minValue: $minLayer.nested(\.regionScale), maxValue: $maxLayer.nested(\.regionScale), range: TerrainFieldDocLimits.Grid.regionScale)
         }
 
-        Section("Turbulence Noise Layer") {
+        Section("Turbulence Noise Layer", isExpanded: $showTurbulence) {
             UberLayerEditorContent(
                 title: "Turbulence",
                 minLayer: $minLayer.nested(\.turbulenceNoiseLayer),
@@ -330,15 +340,15 @@ struct GridLayerEditorContent: View {
             MinMaxDoubleField(label: "Tile Blend Meters", minValue: $minLayer.nested(\.tileBlendMeters), maxValue: $maxLayer.nested(\.tileBlendMeters), range: TerrainFieldDocLimits.Grid.tileBlendMeters)
         }
 
-        Section("Super Formula 1") {
+        Section("Super Formula 1", isExpanded: $showSuperFormula1) {
             SuperFormulaEditorContent(title: "Super Formula 1", minData: $minLayer.nested(\.superFormula1), maxData: $maxLayer.nested(\.superFormula1), globalMin: globalMin.superFormula1, globalMax: globalMax.superFormula1)
         }
 
-        Section("Super Formula 2") {
+        Section("Super Formula 2", isExpanded: $showSuperFormula2) {
             SuperFormulaEditorContent(title: "Super Formula 2", minData: $minLayer.nested(\.superFormula2), maxData: $maxLayer.nested(\.superFormula2), globalMin: globalMin.superFormula2, globalMax: globalMax.superFormula2)
         }
 
-        Section("Super Primitive") {
+        Section("Super Primitive", isExpanded: $showSuperPrimitive) {
             SuperPrimitiveEditorContent(minData: $minLayer.nested(\.superPrimitive), maxData: $maxLayer.nested(\.superPrimitive), globalMin: globalMin.superPrimitive, globalMax: globalMax.superPrimitive)
         }
     }
