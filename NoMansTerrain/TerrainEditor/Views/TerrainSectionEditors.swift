@@ -68,7 +68,15 @@ struct RootTerrainEditorContent: View {
                         refMin: globalMin,
                         refMax: globalMax
                     )
-                }
+                },
+                scope: SectionScopeChoice(
+                    allLabel: "All Values",
+                    thisLabel: "Just the General Tab",
+                    // "All values" replaces the whole document with the (effective) global,
+                    // so it cascades to every layer — and respects the Absolute-limits toggle.
+                    applyAllMin: { data in TerrainEditorOperations.applyGlobalMin(to: &data, from: globalMin) },
+                    applyAllMax: { data in TerrainEditorOperations.applyGlobalMax(to: &data, from: globalMax) }
+                )
             )
 
             Button("Activate All Layers", systemImage: "checkmark.circle.fill") {

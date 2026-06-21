@@ -317,11 +317,17 @@ struct NoMansTerrainTests {
 
     // MARK: - Terrain Settings folders
 
+    /// A fresh, isolated container per test backed by a **unique on-disk** store.
+    /// In-memory containers intermittently crash on creation under the serialized suite;
+    /// the on-disk store pattern (also used by the schema tests) has been reliable. Each
+    /// test keeps the returned container alive for its duration.
     @MainActor
-    private func makeFolderContainer() throws -> ModelContainer {
-        try ModelContainer(
+    private func makeContainer() throws -> ModelContainer {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nmt-test-\(UUID().uuidString).store")
+        return try ModelContainer(
             for: TerrainSetting.self, TerrainSettingsFolder.self, TerrainSlot.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(url: url)
         )
     }
 
@@ -369,7 +375,7 @@ struct NoMansTerrainTests {
     func deletingLinkedTerrainEmptiesItsSlots() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)
-        let container = try makeFolderContainer()
+        let container = try makeContainer()
         let context = container.mainContext
 
         let terrain = TerrainSetting(name: "L", preset: preset, min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max))
@@ -390,7 +396,7 @@ struct NoMansTerrainTests {
     func folderExportEmitsGameOrderedSlots() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)
-        let container = try makeFolderContainer()
+        let container = try makeContainer()
         let context = container.mainContext
 
         let folder = TerrainSettingsFolder(name: "Set")
@@ -422,7 +428,7 @@ struct NoMansTerrainTests {
     func folderAllFilledGateFlipsOnlyWhenComplete() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)
-        let container = try makeFolderContainer()
+        let container = try makeContainer()
         let context = container.mainContext
 
         let folder = TerrainSettingsFolder(name: "Set")
@@ -463,7 +469,7 @@ struct NoMansTerrainTests {
     func granularSectionWritePersistsAndLeavesOthersIntact() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)
-        let container = try makeFolderContainer()
+        let container = try makeContainer()
         let context = container.mainContext
 
         let setting = TerrainSetting(
@@ -490,10 +496,7 @@ struct NoMansTerrainTests {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)
 
-        let container = try ModelContainer(
-            for: TerrainSetting.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+        let container = try makeContainer()
         let context = container.mainContext
         let setting = TerrainSetting(
             name: "Auto", preset: preset,

@@ -1,22 +1,37 @@
 import SwiftUI
 
+/// Optional "apply to everything vs. just this section" choice for a `SectionActionBar`
+/// (used by the General tab, where Set Min/Max can either touch only the document scalars
+/// or cascade to every layer).
+struct SectionScopeChoice<Value> {
+    let allLabel: String
+    let thisLabel: String
+    let applyAllMin: (inout Value) -> Void
+    let applyAllMax: (inout Value) -> Void
+}
+
 struct SectionActionBar<Value: ActivePreserving>: View {
     @Binding var minValue: Value
     @Binding var maxValue: Value
     let applyGlobalMin: (inout Value) -> Void
     let applyGlobalMax: (inout Value) -> Void
     let randomize: (inout Value, inout Value) -> Void
+    /// When provided, Set Min/Max first asks whether to apply to all values or just this section.
+    var scope: SectionScopeChoice<Value>? = nil
 
     /// When on, Set Min/Max and Randomize leave each layer's `active` flag untouched.
     @AppStorage("terrainLockActive") private var lockActive = false
 
+    @State private var promptMin = false
+    @State private var promptMax = false
+
     var body: some View {
         HStack {
             Button("Lowest Mins", systemImage: "arrow.down.to.line") {
-                applyPreservingActive($minValue, applyGlobalMin)
+                if scope != nil { promptMin = true } else { applyPreservingActive($minValue, applyGlobalMin) }
             }
             Button("Highest Maxes", systemImage: "arrow.up.to.line") {
-                applyPreservingActive($maxValue, applyGlobalMax)
+                if scope != nil { promptMax = true } else { applyPreservingActive($maxValue, applyGlobalMax) }
             }
             Button("Randomize", systemImage: "dice") {
                 let prevMin = minValue
@@ -31,6 +46,24 @@ struct SectionActionBar<Value: ActivePreserving>: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
         .labelStyle(.titleAndIcon)
+        .confirmationDialog("Lowest Mins", isPresented: $promptMin, titleVisibility: .visible) {
+            if let scope {
+                Button(scope.allLabel) { applyPreservingActive($minValue, scope.applyAllMin) }
+                Button(scope.thisLabel) { applyPreservingActive($minValue, applyGlobalMin) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Do you want to min/max all values, or just the values in the General tab?")
+        }
+        .confirmationDialog("Highest Maxes", isPresented: $promptMax, titleVisibility: .visible) {
+            if let scope {
+                Button(scope.allLabel) { applyPreservingActive($maxValue, scope.applyAllMax) }
+                Button(scope.thisLabel) { applyPreservingActive($maxValue, applyGlobalMax) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Do you want to min/max all values, or just the values in the General tab?")
+        }
     }
 
     private func applyPreservingActive(_ binding: Binding<Value>, _ op: (inout Value) -> Void) {
