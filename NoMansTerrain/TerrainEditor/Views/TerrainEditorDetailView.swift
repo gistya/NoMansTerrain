@@ -111,6 +111,10 @@ struct TerrainEditorDetailView: View {
     /// across existing terrains (false) or the absolute documented limits (true).
     @AppStorage("terrainUseAbsoluteLimits") private var useAbsoluteLimits = false
 
+    /// When on, Set Min/Max and Randomize preserve each layer's `active` flag.
+    /// Read independently by every `SectionActionBar` via the same key.
+    @AppStorage("terrainLockActive") private var lockActive = false
+
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
         case general, noiseLayers, gridLayers, features, caves
 
@@ -180,6 +184,11 @@ struct TerrainEditorDetailView: View {
                 Text("Save failed").font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
+
+            Toggle("Lock active", isOn: $lockActive)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("When on, Set Min/Max and Randomize leave each layer's Active flag unchanged.")
 
             Toggle("Absolute limits", isOn: $useAbsoluteLimits)
                 .toggleStyle(.switch)

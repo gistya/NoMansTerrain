@@ -1,27 +1,44 @@
 import SwiftUI
 
-struct SectionActionBar<Value>: View {
+struct SectionActionBar<Value: ActivePreserving>: View {
     @Binding var minValue: Value
     @Binding var maxValue: Value
     let applyGlobalMin: (inout Value) -> Void
     let applyGlobalMax: (inout Value) -> Void
     let randomize: (inout Value, inout Value) -> Void
 
+    /// When on, Set Min/Max and Randomize leave each layer's `active` flag untouched.
+    @AppStorage("terrainLockActive") private var lockActive = false
+
     var body: some View {
         HStack {
             Button("Lowest Mins", systemImage: "arrow.down.to.line") {
-                mutateValue($minValue, applyGlobalMin)
+                applyPreservingActive($minValue, applyGlobalMin)
             }
             Button("Highest Maxes", systemImage: "arrow.up.to.line") {
-                mutateValue($maxValue, applyGlobalMax)
+                applyPreservingActive($maxValue, applyGlobalMax)
             }
             Button("Randomize", systemImage: "dice") {
+                let prevMin = minValue
+                let prevMax = maxValue
                 mutatePair($minValue, $maxValue, randomize)
+                if lockActive {
+                    minValue = minValue.preservingActive(from: prevMin)
+                    maxValue = maxValue.preservingActive(from: prevMax)
+                }
             }
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
         .labelStyle(.titleAndIcon)
+    }
+
+    private func applyPreservingActive(_ binding: Binding<Value>, _ op: (inout Value) -> Void) {
+        let previous = binding.wrappedValue
+        mutateValue(binding, op)
+        if lockActive {
+            binding.wrappedValue = binding.wrappedValue.preservingActive(from: previous)
+        }
     }
 }
 

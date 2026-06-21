@@ -231,6 +231,38 @@ struct NoMansTerrainTests {
         #expect(maxData.seaLevel == aggregate.max.seaLevel)
     }
 
+    @Test
+    func preservingActiveKeepsActiveFlagsButTakesOtherFields() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        var previous = pair.min
+        previous.gridLayers.small.active = true
+        previous.gridLayers.small.turbulenceNoiseLayer.active = false
+        previous.noiseLayers.base.active = true
+        previous.features.river.active = false
+        previous.caves.underground.mouth.active = true
+
+        var updated = pair.max
+        updated.gridLayers.small.active = false
+        updated.gridLayers.small.turbulenceNoiseLayer.active = true
+        updated.noiseLayers.base.active = false
+        updated.features.river.active = true
+        updated.caves.underground.mouth.active = false
+        updated.gridLayers.small.yaw = 77  // non-active field should survive
+
+        let result = updated.preservingActive(from: previous)
+
+        // `active` flags (including nested) come from `previous`.
+        #expect(result.gridLayers.small.active == true)
+        #expect(result.gridLayers.small.turbulenceNoiseLayer.active == false)
+        #expect(result.noiseLayers.base.active == true)
+        #expect(result.features.river.active == false)
+        #expect(result.caves.underground.mouth.active == true)
+        // Everything else comes from the mutated value.
+        #expect(result.gridLayers.small.yaw == 77)
+    }
+
     @Test @MainActor
     func fullSettingsExportUsesOneTerrainForAllSlots() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
