@@ -492,6 +492,41 @@ struct NoMansTerrainTests {
     }
 
     @Test @MainActor
+    func duplicatingTerrainProducesIndependentCopy() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+        let container = try makeContainer()
+        let context = container.mainContext
+
+        let original = TerrainSetting(
+            name: "Orig", preset: preset,
+            min: TerrainMin(min: pair.min), max: TerrainMax(max: pair.max)
+        )
+        context.insert(original)
+        try context.save()
+
+        // Duplicate the way the sidebar's "Duplicate" action does.
+        let copy = TerrainSetting(
+            name: "Orig copy", preset: original.preset,
+            min: TerrainMin(min: original.sendableMin), max: TerrainMax(max: original.sendableMax),
+            isCustom: original.isCustom
+        )
+        context.insert(copy)
+        try context.save()
+        #expect(copy.sendableMin.seaLevel == original.sendableMin.seaLevel)
+
+        // Editing the copy must not affect the original.
+        var edited = copy.sendableMin
+        edited.seaLevel = 9999
+        copy.replaceAllSections(min: edited, max: copy.sendableMax)
+        try context.save()
+
+        #expect(try context.fetch(FetchDescriptor<TerrainSetting>()).count == 2)
+        #expect(original.sendableMin.seaLevel != 9999)
+        #expect(copy.sendableMin.seaLevel == 9999)
+    }
+
+    @Test @MainActor
     func sessionApplyPersistsEditsToSetting() async throws {
         let preset = try #require(try await FileLoader().availablePresets().first)
         let pair = try await FileLoader().loadTerrainPair(preset: preset)

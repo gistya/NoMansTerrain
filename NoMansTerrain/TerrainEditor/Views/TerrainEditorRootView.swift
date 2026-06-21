@@ -22,6 +22,9 @@ struct TerrainEditorRootView: View {
     @State private var showBlankSheet = false
     @State private var searchText = ""
 
+    @State private var renamingSetting: TerrainSetting?
+    @State private var renameText = ""
+
     @State private var isGenerating = false
     @State private var genProgress = 0
     @State private var genTotal = TerrainRandomBatch.totalSteps
@@ -71,6 +74,15 @@ struct TerrainEditorRootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(genError ?? "Unknown error")
+        }
+        .alert(
+            "Rename Terrain",
+            isPresented: Binding(get: { renamingSetting != nil }, set: { if !$0 { renamingSetting = nil } }),
+            presenting: renamingSetting
+        ) { setting in
+            TextField("Name", text: $renameText)
+            Button("Rename") { rename(setting, to: renameText) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -131,6 +143,15 @@ struct TerrainEditorRootView: View {
                         )
                         .tag(TerrainSidebarSelection.saved(setting.persistentModelID))
                         .draggable(TerrainDragItem(terrainID: setting.persistentModelID))
+                        .contextMenu {
+                            Button("Rename…", systemImage: "pencil") {
+                                renameText = setting.name
+                                renamingSetting = setting
+                            }
+                            Button("Duplicate", systemImage: "plus.square.on.square") {
+                                duplicateSetting(setting)
+                            }
+                        }
                     }
                     .onDelete(perform: deleteSettings)
                 }
@@ -261,6 +282,42 @@ struct TerrainEditorRootView: View {
         modelContext.insert(setting)
         try? modelContext.save()
         selection = .saved(setting.persistentModelID)
+    }
+
+    /// Creates an independent copy of a saved terrain (its own data, a unique name) and
+    /// selects it for editing.
+    private func duplicateSetting(_ setting: TerrainSetting) {
+        let copy = TerrainSetting(
+            name: uniqueCopyName(for: setting.name),
+            preset: setting.preset,
+            min: TerrainMin(min: setting.sendableMin),
+            max: TerrainMax(max: setting.sendableMax),
+            isCustom: setting.isCustom
+        )
+        modelContext.insert(copy)
+        try? modelContext.save()
+        selection = .saved(copy.persistentModelID)
+    }
+
+    /// Renames a terrain. If it's the one currently open in the editor, the live session
+    /// is updated too so the change sticks (otherwise the next autosave would overwrite it).
+    private func rename(_ setting: TerrainSetting, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if case .saved(let id) = activeSessionKey, id == setting.persistentModelID {
+            activeSession?.name = trimmed
+        }
+        setting.name = trimmed
+        try? modelContext.save()
+    }
+
+    private func uniqueCopyName(for name: String) -> String {
+        let base = "\(name) copy"
+        let existing = Set(savedSettings.map(\.name))
+        guard existing.contains(base) else { return base }
+        var index = 2
+        while existing.contains("\(base) \(index)") { index += 1 }
+        return "\(base) \(index)"
     }
 
     private func loadActiveSession(for selection: TerrainSidebarSelection?) {
