@@ -115,6 +115,10 @@ struct TerrainEditorDetailView: View {
     /// Read independently by every `SectionActionBar` via the same key.
     @AppStorage("terrainLockActive") private var lockActive = false
 
+    /// When on, every `maximumLOD` is pinned to its maximum (lower LOD causes in-game
+    /// issues). Read independently by every `SectionActionBar` via the same key.
+    @AppStorage("terrainLockLODMax") private var lockLODMax = false
+
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
         case general, noiseLayers, gridLayers, features, caves
 
@@ -152,6 +156,13 @@ struct TerrainEditorDetailView: View {
         .navigationTitle(session.name)
         .toolbar { toolbarContent }
         .onChange(of: session.revision) { _, _ in scheduleAutosave() }
+        .onChange(of: lockLODMax) { _, isOn in
+            guard isOn else { return }
+            mutatePair(session.minDataBinding, session.maxDataBinding) { min, max in
+                min = min.applyingMaxLOD()
+                max = max.applyingMaxLOD()
+            }
+        }
         .onDisappear { flushAutosave() }
         .sheet(isPresented: $showShareSheet) {
             TerrainShareSheet(urls: exportURLs)
@@ -189,6 +200,11 @@ struct TerrainEditorDetailView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .help("When on, Set Min/Max and Randomize leave each layer's Active flag unchanged.")
+
+            Toggle("Lock LOD max", isOn: $lockLODMax)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("When on, every layer's Maximum LOD is pinned to its highest value (lower LOD causes in-game issues). Enabling it raises all LODs now, and Set Min/Max & Randomize keep them maxed.")
 
             Toggle("Absolute limits", isOn: $useAbsoluteLimits)
                 .toggleStyle(.switch)

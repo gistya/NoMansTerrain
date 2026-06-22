@@ -61,6 +61,20 @@ enum NoiseGridType: String, Codable, CaseIterable {
     case file = "File"
 }
 
+extension NoiseGridType {
+    /// True for the SuperFormula-driven grid types (the ones whose SuperFormula 1/2
+    /// settings actually matter).
+    var isSuperFormula: Bool {
+        switch self {
+        case .superFormula, .superFormula01, .superFormula02, .superFormula03, .superFormula04,
+             .superFormula05, .superFormula06, .superFormula07, .superFormula08, .superFormulaRandom:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 enum FeatureType: String, Codable, CaseIterable {
     case tube = "Tube"
     case blob = "Blob"

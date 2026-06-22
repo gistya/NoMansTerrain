@@ -212,6 +212,29 @@ struct NoMansTerrainTests {
     }
 
     @Test
+    func noiseGridTypeDetectsSuperFormulaVariants() {
+        #expect(NoiseGridType.superFormula.isSuperFormula)
+        #expect(NoiseGridType.superFormula03.isSuperFormula)
+        #expect(NoiseGridType.superFormulaRandom.isSuperFormula)
+        #expect(!NoiseGridType.superPrimitive.isSuperFormula)
+        #expect(!NoiseGridType.sphere.isSuperFormula)
+    }
+
+    @Test @MainActor
+    func playgroundMinMaxBindingsTrackTheSelectedSet() {
+        let state = SuperFormulaEditorState()
+
+        state.showingMax = false
+        state.formula1Binding.wrappedValue = TkNoiseSuperFormulaData(formM: 1, formN1: 1, formN2: 1, formN3: 1)
+        #expect(state.minFormula1.formM == 1)
+
+        state.showingMax = true
+        state.formula1Binding.wrappedValue = TkNoiseSuperFormulaData(formM: 9, formN1: 9, formN2: 9, formN3: 9)
+        #expect(state.maxFormula1.formM == 9)
+        #expect(state.minFormula1.formM == 1)  // editing Max leaves Min untouched
+    }
+
+    @Test
     func absoluteBoundsSnapsDocumentedFieldsToLimits() async throws {
         let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
         var minData = aggregate.min
@@ -261,6 +284,30 @@ struct NoMansTerrainTests {
         #expect(result.caves.underground.mouth.active == true)
         // Everything else comes from the mutated value.
         #expect(result.gridLayers.small.yaw == 77)
+    }
+
+    @Test
+    func applyingMaxLODPinsEveryLayerToItsMax() async throws {
+        let preset = try #require(try await FileLoader().availablePresets().first)
+        let pair = try await FileLoader().loadTerrainPair(preset: preset)
+
+        var data = pair.min
+        data.noiseLayers.base.maximumLOD = 1
+        data.gridLayers.small.maximumLOD = 1
+        data.gridLayers.small.turbulenceNoiseLayer.maximumLOD = 1
+        data.features.river.maximumLOD = 1
+        data.caves.underground.mouth.maximumLOD = 1
+
+        let result = data.applyingMaxLOD()
+
+        #expect(result.noiseLayers.base.maximumLOD == 4)
+        #expect(result.noiseLayers.continent.maximumLOD == 4)
+        #expect(result.gridLayers.small.maximumLOD == 3)
+        #expect(result.gridLayers.small.turbulenceNoiseLayer.maximumLOD == 4)
+        #expect(result.gridLayers.resourcesEmeril.maximumLOD == 3)
+        #expect(result.features.river.maximumLOD == 3)
+        #expect(result.caves.underground.mouth.maximumLOD == 3)
+        #expect(result.caves.underground.tunnel.maximumLOD == 3)
     }
 
     @Test @MainActor

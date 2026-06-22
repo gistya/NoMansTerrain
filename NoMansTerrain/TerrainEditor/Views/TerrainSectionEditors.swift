@@ -289,6 +289,13 @@ struct GridLayerEditorContent: View {
     @State private var showSuperFormula2 = false
     @State private var showSuperPrimitive = false
 
+    @Environment(SuperFormulaEditorState.self) private var playground
+
+    /// SuperFormula import is offered only when this grid uses a SuperFormula type.
+    private var usesSuperFormula: Bool {
+        minLayer.noiseGridType.isSuperFormula || maxLayer.noiseGridType.isSuperFormula
+    }
+
     var body: some View {
         Section {
             SectionActionBar(
@@ -349,11 +356,21 @@ struct GridLayerEditorContent: View {
         }
 
         Section("Super Formula 1", isExpanded: $showSuperFormula1) {
-            SuperFormulaEditorContent(title: "Super Formula 1", minData: $minLayer.nested(\.superFormula1), maxData: $maxLayer.nested(\.superFormula1), globalMin: globalMin.superFormula1, globalMax: globalMax.superFormula1)
+            SuperFormulaEditorContent(
+                title: "Super Formula 1",
+                minData: $minLayer.nested(\.superFormula1), maxData: $maxLayer.nested(\.superFormula1),
+                globalMin: globalMin.superFormula1, globalMax: globalMax.superFormula1,
+                importSource: usesSuperFormula ? (min: playground.minFormula1, max: playground.maxFormula1) : nil
+            )
         }
 
         Section("Super Formula 2", isExpanded: $showSuperFormula2) {
-            SuperFormulaEditorContent(title: "Super Formula 2", minData: $minLayer.nested(\.superFormula2), maxData: $maxLayer.nested(\.superFormula2), globalMin: globalMin.superFormula2, globalMax: globalMax.superFormula2)
+            SuperFormulaEditorContent(
+                title: "Super Formula 2",
+                minData: $minLayer.nested(\.superFormula2), maxData: $maxLayer.nested(\.superFormula2),
+                globalMin: globalMin.superFormula2, globalMax: globalMax.superFormula2,
+                importSource: usesSuperFormula ? (min: playground.minFormula2, max: playground.maxFormula2) : nil
+            )
         }
 
         Section("Super Primitive", isExpanded: $showSuperPrimitive) {
@@ -452,6 +469,9 @@ struct SuperFormulaEditorContent: View {
     @Binding var maxData: TkNoiseSuperFormulaData
     let globalMin: TkNoiseSuperFormulaData
     let globalMax: TkNoiseSuperFormulaData
+    /// The matching SuperFormula (Min & Max) from the Playground, shown as an import button
+    /// when the grid's Noise Grid Type is a SuperFormula variant.
+    var importSource: (min: TkNoiseSuperFormulaData, max: TkNoiseSuperFormulaData)? = nil
 
     var body: some View {
         Group {
@@ -469,6 +489,15 @@ struct SuperFormulaEditorContent: View {
                     )
                 }
             )
+            if let importSource {
+                Button("Import from SuperFormula Editor", systemImage: "square.and.arrow.down.on.square") {
+                    minData = importSource.min
+                    maxData = importSource.max
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Replace this SuperFormula's Min/Max with the current SuperFormula Playground settings.")
+            }
             MinMaxDoubleField(label: "\(title) Form M", minValue: $minData.nested(\.formM), maxValue: $maxData.nested(\.formM), range: TerrainFieldDocLimits.SuperFormula.formM)
             MinMaxDoubleField(label: "\(title) Form N1", minValue: $minData.nested(\.formN1), maxValue: $maxData.nested(\.formN1), range: TerrainFieldDocLimits.SuperFormula.formN1)
             MinMaxDoubleField(label: "\(title) Form N2", minValue: $minData.nested(\.formN2), maxValue: $maxData.nested(\.formN2), range: TerrainFieldDocLimits.SuperFormula.formN2)

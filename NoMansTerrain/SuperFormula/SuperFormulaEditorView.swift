@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SuperFormulaEditorView: View {
-    @State private var state = SuperFormulaEditorState()
+    @Environment(SuperFormulaEditorState.self) private var state
     @State private var copiedConfirmation = false
     @State private var orbitBaseAzimuth: Float = 0.6
     @State private var orbitBaseElevation: Float = 0.35
@@ -49,6 +49,18 @@ struct SuperFormulaEditorView: View {
         @Bindable var state = state
 
         return Form {
+            Section {
+                Picker("Editing", selection: $state.showingMax) {
+                    Text("Min").tag(false)
+                    Text("Max").tag(true)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Set")
+            } footer: {
+                Text("The preview and sliders show the selected set. Each set is carried over when you import into the terrain editor.")
+            }
+
             Section("Presets") {
                 Picker("Preset", selection: Binding(
                     get: { "" },
@@ -66,17 +78,6 @@ struct SuperFormulaEditorView: View {
 
             formulaSection(title: "SuperFormula 1", formula: state.formula1Binding, mRange: 0.1...10, n1Range: 0...100)
             formulaSection(title: "SuperFormula 2", formula: state.formula2Binding, mRange: 0.1...10, n1Range: 0...100)
-
-            Section("SuperPrimitive") {
-                let primitive = state.primitiveBinding
-                primitiveSlider("Width", value: primitive.nested(\.width), range: 0.1...1)
-                primitiveSlider("Height", value: primitive.nested(\.height), range: 0.1...1)
-                primitiveSlider("Depth", value: primitive.nested(\.depth), range: 0.1...1)
-                primitiveSlider("Thickness", value: primitive.nested(\.thickness), range: 0.1...1)
-                primitiveSlider("Corner Radius XY", value: primitive.nested(\.cornerRadiusXY), range: 0...1)
-                primitiveSlider("Corner Radius Z", value: primitive.nested(\.cornerRadiusZ), range: 0...1)
-                primitiveSlider("Bottom Radius Offset", value: primitive.nested(\.bottomRadiusOffset), range: 0...1)
-            }
 
             Section("NMS XML") {
                 Text(state.xmlSnippet)
@@ -117,10 +118,6 @@ struct SuperFormulaEditorView: View {
             }
             Slider(value: value, in: range)
         }
-    }
-
-    private func primitiveSlider(_ label: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
-        formulaSlider(label, value: value, range: range)
     }
 
     private var cameraDragGesture: some Gesture {
@@ -182,4 +179,5 @@ import UIKit
 
 #Preview {
     SuperFormulaEditorView()
+        .environment(SuperFormulaEditorState())
 }

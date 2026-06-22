@@ -15,8 +15,7 @@ struct SuperFormulaMesh {
 
     static func generate(
         formula1: TkNoiseSuperFormulaData,
-        formula2: TkNoiseSuperFormulaData,
-        primitive: TkNoiseSuperPrimitiveData
+        formula2: TkNoiseSuperFormulaData
     ) -> SuperFormulaMesh {
         var positions: [SIMD3<Float>] = []
         positions.reserveCapacity((thetaSegments + 1) * (phiSegments + 1))
@@ -30,8 +29,7 @@ struct SuperFormulaMesh {
                         theta: theta,
                         phi: phi,
                         formula1: formula1,
-                        formula2: formula2,
-                        primitive: primitive
+                        formula2: formula2
                     )
                 )
             }

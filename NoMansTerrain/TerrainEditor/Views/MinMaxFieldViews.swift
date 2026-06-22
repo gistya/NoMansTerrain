@@ -10,7 +10,7 @@ struct SectionScopeChoice<Value> {
     let applyAllMax: (inout Value) -> Void
 }
 
-struct SectionActionBar<Value: ActivePreserving>: View {
+struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
     @Binding var minValue: Value
     @Binding var maxValue: Value
     let applyGlobalMin: (inout Value) -> Void
@@ -21,6 +21,8 @@ struct SectionActionBar<Value: ActivePreserving>: View {
 
     /// When on, Set Min/Max and Randomize leave each layer's `active` flag untouched.
     @AppStorage("terrainLockActive") private var lockActive = false
+    /// When on, Set Min/Max and Randomize keep every `maximumLOD` pinned to its maximum.
+    @AppStorage("terrainLockLODMax") private var lockLODMax = false
 
     @State private var promptMin = false
     @State private var promptMax = false
@@ -40,6 +42,10 @@ struct SectionActionBar<Value: ActivePreserving>: View {
                 if lockActive {
                     minValue = minValue.preservingActive(from: prevMin)
                     maxValue = maxValue.preservingActive(from: prevMax)
+                }
+                if lockLODMax {
+                    minValue = minValue.applyingMaxLOD()
+                    maxValue = maxValue.applyingMaxLOD()
                 }
             }
         }
@@ -71,6 +77,9 @@ struct SectionActionBar<Value: ActivePreserving>: View {
         mutateValue(binding, op)
         if lockActive {
             binding.wrappedValue = binding.wrappedValue.preservingActive(from: previous)
+        }
+        if lockLODMax {
+            binding.wrappedValue = binding.wrappedValue.applyingMaxLOD()
         }
     }
 }
