@@ -31,7 +31,6 @@
 
 /* Begin PBXFileReference section */
 		7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NoMansTerrain.xctestplan; sourceTree = "<group>"; };
-		737C9E102FE0A00C0041405F /* voxelgeneratorsettings.MXML */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = voxelgeneratorsettings.MXML; path = ../nms_terrain/voxelgeneratorsettings.MXML; sourceTree = "<group>"; };
 		7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoMansTerrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -62,18 +61,6 @@
 				737C9F692FE0A0400041405F /* Exceptions for "nms_terrain" folder in "NoMansTerrain" target */,
 			);
 			path = nms_terrain;
-			sourceTree = "<group>";
-		};
-		737C9DEE2FE0A0050041405F /* Max */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			name = Max;
-			path = ../nms_terrain/Max;
-			sourceTree = "<group>";
-		};
-		737C9E0F2FE0A0080041405F /* Min */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			name = Min;
-			path = ../nms_terrain/Min;
 			sourceTree = "<group>";
 		};
 		7385C4FF2FE03E28005780E2 /* NoMansTerrain */ = {
@@ -124,21 +111,10 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		737C9DCE2FE09FFA0041405F /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				737C9E102FE0A00C0041405F /* voxelgeneratorsettings.MXML */,
-				737C9E0F2FE0A0080041405F /* Min */,
-				737C9DEE2FE0A0050041405F /* Max */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
 		7385C4F42FE03E28005780E2 = {
 			isa = PBXGroup;
 			children = (
 				7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */,
-				737C9DCE2FE09FFA0041405F /* Resources */,
 				737C9D0A2FE09FF20041405F /* nms_terrain */,
 				7385C6332FE03E89005780E2 /* hastings */,
 				7385C4FF2FE03E28005780E2 /* NoMansTerrain */,
@@ -354,6 +330,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y453UXCT86;
@@ -381,6 +358,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = BlueTendril;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -389,18 +367,18 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
@@ -410,6 +388,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y453UXCT86;
@@ -437,6 +416,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = BlueTendril;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -445,18 +425,18 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
