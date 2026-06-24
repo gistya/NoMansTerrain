@@ -21,6 +21,10 @@ struct TerrainFolderGridView: View {
     @State private var exportURLs: [URL] = []
     @State private var showShareSheet = false
 
+    /// When on, randomly-filled slots get every layer's LOD pinned to max instead of a
+    /// random LOD (low LODs cause major in-game issues). Mirrors the editor's toggle.
+    @AppStorage("terrainLockLODMax") private var lockLODMax = false
+
     private let columns = [GridItem(.adaptive(minimum: 210), spacing: 12)]
 
     var body: some View {
@@ -139,6 +143,10 @@ struct TerrainFolderGridView: View {
                     var minData = gmin
                     var maxData = gmax
                     TerrainEditorOperations.randomizeRoot(minData: &minData, maxData: &maxData, refMin: gmin, refMax: gmax)
+                    if lockLODMax {
+                        minData = minData.applyingMaxLOD()
+                        maxData = maxData.applyingMaxLOD()
+                    }
                     slot.setSnapshot(min: minData, max: maxData, label: "Random")
                 case .preset:
                     if let pair = try? await loader.loadTerrainPair(preset: preset) {

@@ -84,6 +84,55 @@ struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
     }
 }
 
+/// A numeric text field that edits a **local string** and only writes back to the model
+/// on Return or focus-loss. Typing never mutates the (observed) model, so it never bumps
+/// the edit revision, never schedules an autosave, and — because the displayed text is
+/// `@State` — an unrelated re-render (autosave status, a sibling slider) can't reformat
+/// and clobber what you're in the middle of typing. When the field isn't focused it
+/// mirrors external changes (Set Min/Max, Randomize, tab switches) from `value`.
+private struct CommittingNumberField<Value: Equatable>: View {
+    let title: String
+    let value: Value
+    let format: (Value) -> String
+    let parse: (String) -> Value?
+    let onCommit: (Value) -> Void
+
+    @State private var text = ""
+    @State private var initialized = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(title, text: $text)
+            .textFieldStyle(.roundedBorder)
+            .writingToolsBehavior(.disabled)
+            .focused($focused)
+            .onAppear {
+                if !initialized {
+                    text = format(value)
+                    initialized = true
+                }
+            }
+            .onChange(of: value) { _, newValue in
+                // Don't overwrite what the user is actively typing; only reflect
+                // external mutations while the field is idle.
+                if !focused { text = format(newValue) }
+            }
+            .onChange(of: focused) { _, isFocused in
+                if !isFocused { commit() }
+            }
+            .onSubmit { commit() }
+    }
+
+    private func commit() {
+        if let parsed = parse(text.trimmingCharacters(in: .whitespaces)) {
+            onCommit(parsed)
+            text = format(parsed)
+        } else {
+            text = format(value)
+        }
+    }
+}
+
 /// Min/max double editor.
 ///
 /// Sliders show the **model value directly** except while actively dragging, when they
@@ -151,9 +200,13 @@ struct MinMaxDoubleField: View {
                     }
                 }
             )
-            TextField(title, value: textBinding(isMinColumn: isMinColumn), format: .number.precision(.fractionLength(3)))
-                .textFieldStyle(.roundedBorder)
-                .writingToolsBehavior(.disabled)
+            CommittingNumberField(
+                title: title,
+                value: isMinColumn ? minValue : maxValue,
+                format: { $0.formatted(.number.grouping(.never).precision(.fractionLength(3))) },
+                parse: { Double($0) },
+                onCommit: { isMinColumn ? setMin($0) : setMax($0) }
+            )
         }
         .frame(maxWidth: .infinity)
     }
@@ -165,16 +218,6 @@ struct MinMaxDoubleField: View {
             get: { isMinColumn ? (dragMin ?? minValue) : (dragMax ?? maxValue) },
             set: { newValue in
                 if isMinColumn { dragMin = newValue } else { dragMax = newValue }
-            }
-        )
-    }
-
-    /// Text field reads/writes the model directly (low frequency, commits on return).
-    private func textBinding(isMinColumn: Bool) -> Binding<Double> {
-        Binding(
-            get: { isMinColumn ? minValue : maxValue },
-            set: { newValue in
-                if isMinColumn { setMin(newValue) } else { setMax(newValue) }
             }
         )
     }
@@ -242,12 +285,16 @@ struct MinMaxIntField: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 4) {
-                TextField(title, value: bound, format: .number)
-                    .textFieldStyle(.roundedBorder)
-                    .writingToolsBehavior(.disabled)
-                    .frame(maxWidth: .infinity)
+                CommittingNumberField(
+                    title: title,
+                    value: value.wrappedValue,
+                    format: { $0.formatted(.number.grouping(.never)) },
+                    parse: { Int($0) },
+                    onCommit: { bound.wrappedValue = $0 }
+                )
+                .frame(maxWidth: .infinity)
 #if os(iOS)
-                    .keyboardType(.numbersAndPunctuation)
+                .keyboardType(.numbersAndPunctuation)
 #endif
                 Stepper(value: bound, in: effectiveRange) {
                     EmptyView()
@@ -386,9 +433,12 @@ struct MinMaxSeedField: View {
                 }
             ))
             if seed.wrappedValue.seed != nil {
-                TextField("Seed", value: Binding(
-                    get: { seed.wrappedValue.seed ?? 0 },
-                    set: { newValue in
+                CommittingNumberField(
+                    title: "Seed",
+                    value: seed.wrappedValue.seed ?? 0,
+                    format: { $0.formatted(.number.grouping(.never)) },
+                    parse: { Int($0) },
+                    onCommit: { newValue in
                         seed.wrappedValue = BaseSeed(seed: newValue)
                         if isMinColumn, let otherSeed = other.seed, newValue > otherSeed {
                             maxSeed = BaseSeed(seed: newValue)
@@ -397,9 +447,7 @@ struct MinMaxSeedField: View {
                             minSeed = BaseSeed(seed: newValue)
                         }
                     }
-                ), format: .number)
-                .textFieldStyle(.roundedBorder)
-                .writingToolsBehavior(.disabled)
+                )
             }
         }
         .frame(maxWidth: .infinity)
