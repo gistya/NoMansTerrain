@@ -23,6 +23,19 @@ struct InsaneTerrain: Identifiable, Sendable {
 enum ClaudeInsaneTerrains {
     static let setName = "Claude's Insane Terrain"
 
+    /// Global spikiness dial, 0…1. At `1.0` the set is maximally unhinged; lower values pull
+    /// the most aggressive drivers back toward documented-safe so spikes stay thicker than
+    /// the voxel grid can mesh (very thin, high-frequency spikes tear holes in the terrain).
+    /// Tuned to 0.7 after in-game gaps showed up at full tilt. Change this one number to
+    /// dial the whole set hotter or tamer.
+    static let intensity = 0.7
+
+    /// Interpolates from a tame value (used as `intensity` → 0) to a wild value (`intensity`
+    /// → 1). Used on the handful of fields that drive sub-voxel spike thinness.
+    private static func hot(_ tame: Double, _ wild: Double) -> Double {
+        tame + (wild - tame) * intensity
+    }
+
     /// Builds all 31 insane terrains from a structurally-complete base (use the catalog's
     /// aggregated `globalMin`/`globalMax`). Pure and deterministic.
     static func generate(base: SendableTerrain) -> [InsaneTerrain] {
@@ -104,11 +117,12 @@ enum ClaudeInsaneTerrains {
         let spiky = spec.theme.isSpiky
         let blobby = spec.theme.isBlobby
 
-        setPair(&a, &b, \.noiseData.amplifyFeatures, 0.4, 1.4, &rng)          // doc max 0.5
+        setPair(&a, &b, \.noiseData.amplifyFeatures, 0.3, hot(0.5, 1.2), &rng)        // doc max 0.5
         let pSign = blobby ? -1.0 : 1.0
-        setPair(&a, &b, \.noiseData.perturbFeatures, 0.4 * pSign, 1.6 * pSign, &rng) // doc ±0.4
-        a.noiseData.ridgeErosion = spiky ? 1.0 : Double.random(in: 0...1, using: &rng)
-        b.noiseData.ridgeErosion = 1.0
+        setPair(&a, &b, \.noiseData.perturbFeatures, 0.3 * pSign, hot(0.6, 1.6) * pSign, &rng) // doc ±0.4
+        // Ridges are the sharpest, thinnest features — don't pin them to full.
+        a.noiseData.ridgeErosion = spiky ? hot(0.5, 1.0) : Double.random(in: 0...1, using: &rng)
+        b.noiseData.ridgeErosion = hot(0.5, 1.0)
         setPair(&a, &b, \.noiseData.slopeErosion, 0.0, 1.0, &rng)
         if spiky {
             setPair(&a, &b, \.noiseData.sharpToRoundFeatures, 0.5, 1.0, &rng)
@@ -118,21 +132,24 @@ enum ClaudeInsaneTerrains {
             setPair(&a, &b, \.noiseData.sharpToRoundFeatures, -1.0, 1.0, &rng)
         }
         setPair(&a, &b, \.noiseData.altitudeErosion, 0.0, 0.5, &rng)          // doc max 0.25
-        setPair(&a, &b, \.noiseData.lacunarity, 2.0, 3.4, &rng)               // doc max 2.2
-        setPair(&a, &b, \.noiseData.gain, 0.5, 0.9, &rng)                     // doc max 0.6
-        setPairInt(&a, &b, \.noiseData.octaves, 8, 10, &rng)                  // cap at 10 (perf)
+        // Lacunarity × gain × octaves drive fine high-amplitude detail — the main cause of
+        // sub-voxel thinness — so these get pulled back the hardest.
+        setPair(&a, &b, \.noiseData.lacunarity, 2.0, hot(2.3, 3.2), &rng)     // doc max 2.2
+        setPair(&a, &b, \.noiseData.gain, 0.5, hot(0.65, 0.88), &rng)         // doc max 0.6
+        setPairInt(&a, &b, \.noiseData.octaves, 7, intensity > 0.85 ? 10 : 9, &rng) // cap (perf + detail)
         setPair(&a, &b, \.noiseData.remapFromMin, -1.5, 0.2, &rng)
         setPair(&a, &b, \.noiseData.remapFromMax, 0.4, 1.8, &rng)
         setPair(&a, &b, \.noiseData.remapToMin, -1.5, 0.0, &rng)
         setPair(&a, &b, \.noiseData.remapToMax, 0.8, 2.0, &rng)
 
         let reliefH = (role == 7 ? 1.6 : 1.0) * spec.relief                   // continent taller
-        setPair(&a, &b, \.height, 120 * reliefH, 260 * reliefH, &rng)         // doc max ~128
+        setPair(&a, &b, \.height, hot(90, 120) * reliefH, hot(170, 260) * reliefH, &rng) // doc max ~128
         setPair(&a, &b, \.heightOffset, -spec.floatAmount * 0.2, spec.floatAmount * 0.5, &rng)
         setPair(&a, &b, \.regionRatio, 0.6, 1.0, &rng)
         setPair(&a, &b, \.regionScale, 1.5, 12.0, &rng)
         setPair(&a, &b, \.regionGain, 1.0, 4.0, &rng)
-        setPair(&a, &b, \.smoothRadius, blobby ? 8 : 0, blobby ? 20 : 4, &rng)
+        // Lower intensity → more post-smoothing, which fuses near-sub-voxel detail.
+        setPair(&a, &b, \.smoothRadius, blobby ? 8 : hot(4, 0), blobby ? 20 : hot(10, 4), &rng)
         if spec.theme == .terraces {
             setPair(&a, &b, \.plateauStratas, 6, 16, &rng)
             setPairInt(&a, &b, \.plateauSharpness, 3, 4, &rng)
@@ -155,8 +172,11 @@ enum ClaudeInsaneTerrains {
         b.subtract = (spec.theme == .vortex && !resource)
 
         // SuperFormula 1 — straight from the recipe (values may exceed doc bounds).
+        // `formN1` near 0 makes razor-thin spikes; lower intensity raises that floor so the
+        // shapes stay chunky enough to mesh without tearing.
+        let n1Floor = Swift.max(spec.n1, hot(spec.n1, 0.8))
         setPair(&a, &b, \.superFormula1.formM, spec.m, spec.m + 1.5, &rng)
-        setPair(&a, &b, \.superFormula1.formN1, spec.n1, spec.n1 + 6, &rng)
+        setPair(&a, &b, \.superFormula1.formN1, n1Floor, n1Floor + 6, &rng)
         setPair(&a, &b, \.superFormula1.formN2, spec.n2, spec.n2 + 8, &rng)
         setPair(&a, &b, \.superFormula1.formN3, spec.n3, spec.n3 + 8, &rng)
         // SuperFormula 2 — a contrasting set so the two axes disagree (more alien).
@@ -177,7 +197,8 @@ enum ClaudeInsaneTerrains {
         setPair(&a, &b, \.minWidth, 60 * s, 200 * s, &rng)
         setPair(&a, &b, \.maxWidth, 250 * s, 600 * s, &rng)
         setPair(&a, &b, \.minHeight, 30 * s, 120 * s, &rng)
-        setPair(&a, &b, \.maxHeight, 150 * s, 400 * s, &rng)
+        // Tall + thin = needles that tear; cap the height as intensity drops.
+        setPair(&a, &b, \.maxHeight, hot(130, 150) * s, hot(240, 400) * s, &rng)
 
         if spec.theme.isFloating && !resource {
             setPair(&a, &b, \.minHeightOffset, spec.floatAmount * 0.4, spec.floatAmount * 0.7, &rng) // beyond ±128
