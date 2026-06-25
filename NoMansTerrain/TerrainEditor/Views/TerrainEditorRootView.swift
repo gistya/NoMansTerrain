@@ -20,7 +20,12 @@ struct TerrainEditorRootView: View {
     @State private var activeSessionKey: TerrainSidebarSelection?
     @State private var showNewSheet = false
     @State private var showBlankSheet = false
+    @State private var showInsaneSheet = false
     @State private var searchText = ""
+
+    @State private var isExportingInsane = false
+    @State private var insaneError: String?
+    @State private var showInsaneError = false
 
     @State private var renamingSetting: TerrainSetting?
     @State private var renameText = ""
@@ -65,15 +70,29 @@ struct TerrainEditorRootView: View {
             )
             .terrainFormPresentationSizing()
         }
+        .sheet(isPresented: $showInsaneSheet) {
+            ClaudeInsaneTerrainSheet(
+                catalog: catalog,
+                onCreate: { persistNewSession($0) }
+            )
+            .terrainFormPresentationSizing()
+        }
         .overlay {
             if isGenerating {
                 generatingOverlay
+            } else if isExportingInsane {
+                busyOverlay("Building Claude's Insane Terrain…")
             }
         }
         .alert("Generation Failed", isPresented: $showGenError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(genError ?? "Unknown error")
+        }
+        .alert("Export Failed", isPresented: $showInsaneError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(insaneError ?? "Unknown error")
         }
         .alert(
             "Rename Terrain",
@@ -101,6 +120,18 @@ struct TerrainEditorRootView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(width: 280)
+            }
+            .padding(28)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private func busyOverlay(_ message: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.25).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView()
+                Text(message).font(.headline)
             }
             .padding(28)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -163,6 +194,7 @@ struct TerrainEditorRootView: View {
                 Menu {
                     Button("Blank (Safe Defaults)", systemImage: "doc") { showBlankSheet = true }
                     Button("From Preset…", systemImage: "mountain.2") { showNewSheet = true }
+                    Button("From Claude's Insane Terrain…", systemImage: "wand.and.stars") { showInsaneSheet = true }
                     Divider()
                     Button("Folder", systemImage: "folder.badge.plus", action: createFolder)
                 } label: {
@@ -176,6 +208,13 @@ struct TerrainEditorRootView: View {
                 }
                 .help("Create a random Min/Max terrain file for every preset and save them to a folder")
                 .disabled(isGenerating)
+            }
+            ToolbarItem {
+                Button(action: exportInsaneCombined) {
+                    Label("Export Claude's Insane Set…", systemImage: "wand.and.stars")
+                }
+                .help("Write all 31 of Claude's Insane Terrains as a single voxelgeneratorsettings.MXML")
+                .disabled(isExportingInsane)
             }
 #endif
 #if os(iOS)
@@ -220,6 +259,46 @@ struct TerrainEditorRootView: View {
                 showGenError = true
             }
         }
+    }
+
+    private func exportInsaneCombined() {
+        Task { @MainActor in
+            await catalog.loadIfNeeded()
+            guard let globalMin = catalog.globalMin, let globalMax = catalog.globalMax else {
+                insaneError = "Terrain limits are unavailable, so the insane set can't be built."
+                showInsaneError = true
+                return
+            }
+            guard let url = chooseInsaneSaveFile() else { return }
+
+            isExportingInsane = true
+            defer { isExportingInsane = false }
+
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+            let base = SendableTerrain(min: globalMin, max: globalMax)
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    let entries = ClaudeInsaneTerrains.combinedEntries(base: base)
+                    try NMSPropertySerializer.writeCombined(entries, to: url)
+                }.value
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                insaneError = error.localizedDescription
+                showInsaneError = true
+            }
+        }
+    }
+
+    private func chooseInsaneSaveFile() -> URL? {
+        let panel = NSSavePanel()
+        panel.title = "Export Claude's Insane Terrain"
+        panel.message = "Writes all 31 insane terrains into one combined settings file."
+        panel.prompt = "Export"
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = TerrainRandomBatch.combinedFileName
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     private func chooseDumpDirectory() -> URL? {
@@ -277,7 +356,8 @@ struct TerrainEditorRootView: View {
             name: session.name,
             preset: session.preset,
             min: TerrainMin(min: session.minData),
-            max: TerrainMax(max: session.maxData)
+            max: TerrainMax(max: session.maxData),
+            isCustom: session.isCustom
         )
         modelContext.insert(setting)
         try? modelContext.save()
@@ -542,9 +622,89 @@ struct NewBlankTerrainSheet: View {
                 minData: minData,
                 maxData: maxData
             )
+            session.isCustom = true
             onCreate(session)
             dismiss()
             isLoading = false
         }
+    }
+}
+
+/// Lets the user pick one of the 31 "Claude's Insane Terrain" recipes to open as an
+/// editable (Custom) terrain.
+struct ClaudeInsaneTerrainSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let catalog: TerrainLimitsCatalog
+    let onCreate: (TerrainEditorSession) -> Void
+
+    @State private var terrains: [InsaneTerrain] = []
+    @State private var selectedID: Int?
+    @State private var errorMessage: String?
+
+    private var selected: InsaneTerrain? {
+        terrains.first { $0.id == selectedID }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if terrains.isEmpty {
+                    if let errorMessage {
+                        ContentUnavailableView("Unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                    } else {
+                        TerrainLoadingOverlay(message: "Conjuring 31 insane worlds…")
+                    }
+                } else {
+                    List(terrains, selection: $selectedID) { terrain in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(terrain.displayName)
+                                .font(.headline)
+                            Text(terrain.blurb)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                        .tag(terrain.id)
+                    }
+                }
+            }
+            .navigationTitle("Claude's Insane Terrain")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .disabled(selected == nil)
+                }
+            }
+        }
+        .frame(minWidth: 420, minHeight: 440)
+        .task { await load() }
+    }
+
+    private func load() async {
+        await catalog.loadIfNeeded()
+        guard let globalMin = catalog.globalMin, let globalMax = catalog.globalMax else {
+            errorMessage = catalog.loadError ?? "Terrain limits are unavailable."
+            return
+        }
+        let base = SendableTerrain(min: globalMin, max: globalMax)
+        terrains = ClaudeInsaneTerrains.generate(base: base)
+        selectedID = terrains.first?.id
+    }
+
+    private func create() {
+        guard let terrain = selected else { return }
+        let session = TerrainEditorSession(
+            name: terrain.displayName,
+            preset: terrain.preset,
+            minData: terrain.min,
+            maxData: terrain.max
+        )
+        session.isCustom = true
+        onCreate(session)
+        dismiss()
     }
 }

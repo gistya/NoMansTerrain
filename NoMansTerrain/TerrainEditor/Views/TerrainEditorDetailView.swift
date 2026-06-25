@@ -8,6 +8,9 @@ final class TerrainEditorSession {
     var preset: TerrainPreset
     var minData: TkVoxelGeneratorData
     var maxData: TkVoxelGeneratorData
+    /// Marks a session not backed by a bundle preset (Blank / Claude's Insane Terrain), so
+    /// the sidebar labels it "Custom" rather than borrowing a preset's name.
+    var isCustom = false
     var isDirty = false
 
     /// Monotonic counter bumped on every committed edit. Observers use it as a cheap

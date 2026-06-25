@@ -182,6 +182,66 @@ struct NoMansTerrainTests {
         #expect(parser.parse(), "Combined file should be well-formed XML")
     }
 
+    // MARK: - Claude's Insane Terrain
+
+    @Test @MainActor
+    func claudeInsaneSetHasThirtyOneTerrainsInGameOrder() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+        let terrains = ClaudeInsaneTerrains.generate(base: aggregate)
+
+        #expect(ClaudeInsaneTerrains.specs.count == TerrainPreset.all.count)
+        #expect(terrains.count == 31)
+        // Each insane terrain maps onto a game slot, in game order.
+        #expect(terrains.map(\.preset.fileBaseName) == TerrainPreset.all.map(\.fileBaseName))
+    }
+
+    @Test @MainActor
+    func claudeInsaneSetIsDeterministic() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+        let a = ClaudeInsaneTerrains.generate(base: aggregate)
+        let b = ClaudeInsaneTerrains.generate(base: aggregate)
+        #expect(a.map(\.min) == b.map(\.min))
+        #expect(a.map(\.max) == b.map(\.max))
+    }
+
+    @Test @MainActor
+    func claudeInsaneGridsUseSuperShapesAtMaxLOD() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+        let terrains = ClaudeInsaneTerrains.generate(base: aggregate)
+
+        func isSuper(_ t: NoiseGridType) -> Bool {
+            t.isSuperFormula || t == .superPrimitive || t == .superPrimitiveRandom
+        }
+
+        for terrain in terrains {
+            for data in [terrain.min, terrain.max] {
+                // The headline grids use SuperFormula / SuperPrimitive shapes.
+                #expect(isSuper(data.gridLayers.small.noiseGridType))
+                #expect(isSuper(data.gridLayers.large.noiseGridType))
+                // Grid LODs pinned to the max-safe value (3); noise layers to theirs (4).
+                #expect(data.gridLayers.small.maximumLOD == TerrainFieldDocLimits.Grid.maximumLOD.upperBound)
+                #expect(data.noiseLayers.base.maximumLOD == TerrainFieldDocLimits.UberLayer.maximumLOD.upperBound)
+                // Layers are activated so the chaos actually renders.
+                #expect(data.noiseLayers.base.active)
+                #expect(data.gridLayers.small.active)
+            }
+        }
+    }
+
+    @Test @MainActor
+    func claudeInsaneCombinedExportIsWellFormedWith31Elements() async throws {
+        let aggregate = try await FileLoader().makeModelsOfXML().aggregate()
+        let entries = ClaudeInsaneTerrains.combinedEntries(base: aggregate)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("insane-\(UUID().uuidString).MXML")
+        try NMSPropertySerializer.writeCombined(entries, to: url)
+
+        let xml = try String(contentsOf: url, encoding: .utf8)
+        let elementCount = xml.components(separatedBy: "value=\"TkVoxelGeneratorSettingsElement\"").count - 1
+        #expect(elementCount == 31)
+        #expect(Foundation.XMLParser(data: Data(xml.utf8)).parse(), "Insane combined file should be well-formed XML")
+    }
+
     @Test
     func presetListExposesOnlyWaterWorldPrime() {
         let waterWorld = TerrainPreset.all.filter { $0.kind == .waterworld }
