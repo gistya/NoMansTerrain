@@ -1,19 +1,19 @@
 import Foundation
 import simd
 
-struct SuperFormulaVertex {
-    var position: SIMD3<Float>
-    var normal: SIMD3<Float>
+public struct SuperFormulaVertex {
+    public var position: SIMD3<Float>
+    public var normal: SIMD3<Float>
 }
 
-struct SuperFormulaMesh {
-    var vertices: [SuperFormulaVertex]
-    var indices: [UInt32]
+public struct SuperFormulaMesh {
+    public var vertices: [SuperFormulaVertex]
+    public var indices: [UInt32]
 
-    static let thetaSegments = 96
-    static let phiSegments = 64
+    public static let thetaSegments = 96
+    public static let phiSegments = 64
 
-    static func generate(
+    public static func generate(
         formula1: TkNoiseSuperFormulaData,
         formula2: TkNoiseSuperFormulaData
     ) -> SuperFormulaMesh {

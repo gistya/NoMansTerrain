@@ -1,4 +1,4 @@
-enum Terrain: CustomStringConvertible, Sendable, Codable {
+public enum Terrain: CustomStringConvertible, Sendable, Codable {
     case alien            (Category, Limit)
     case alpine           (Category, Limit)
     case caverns          (Category, Limit)
@@ -13,9 +13,9 @@ enum Terrain: CustomStringConvertible, Sendable, Codable {
     
     // Note: official game terrain only has WaterworldPrime.
     
-    var fileName: String { description }
+    public var fileName: String { description }
     
-    var description: String {
+    public var description: String {
         switch self {
             case .alien            (let category, let limit): "Alien           \(category.rawValue)_\(limit.rawValue)"
             case .alpine           (let category, let limit): "Alpine          \(category.rawValue)_\(limit.rawValue)"
@@ -31,18 +31,18 @@ enum Terrain: CustomStringConvertible, Sendable, Codable {
         }
     }
     
-    enum Category: String, Codable, Sendable {
+    public enum Category: String, Codable, Sendable {
         case standard = ""
         case prime    = "Prime"
         case purple   = "Purple"
     }
     
-    enum Limit: String {
+    public enum Limit: String {
         case min = "Min"
         case max = "Max"
     }
     
-    var limit: Limit {
+    public var limit: Limit {
         switch self {
         case let .alien           (_, limit): limit
         case let .alpine          (_, limit): limit
@@ -59,10 +59,10 @@ enum Terrain: CustomStringConvertible, Sendable, Codable {
     }
 }
 
-extension Terrain {
-    enum CodingError: Error { case invalid(String) }
+public extension Terrain {
+    public enum CodingError: Error { case invalid(String) }
 
-    init(from decoder: any Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
         guard let value = Terrain(string: raw) else {
             throw CodingError.invalid(raw)
@@ -70,12 +70,12 @@ extension Terrain {
         self = value
     }
 
-    func encode(to encoder: any Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(description)
     }
 
-    init?(string: String) {
+    public init?(string: String) {
         // Strip limit suffix
         let limit: Limit
         let body: Substring

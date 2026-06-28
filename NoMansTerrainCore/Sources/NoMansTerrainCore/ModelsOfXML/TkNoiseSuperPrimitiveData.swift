@@ -1,22 +1,22 @@
 import Foundation
 
-struct TkNoiseSuperPrimitiveData: Codable, Equatable {
+public struct TkNoiseSuperPrimitiveData: Codable, Equatable {
     /// 0.0990...1.0
-    var width: Double
+    public var width: Double
     /// 0.0990...1.0
-    var height: Double
+    public var height: Double
     /// 0.0990...1.0
-    var depth: Double
+    public var depth: Double
     /// 0.0990...1.0
-    var thickness: Double
+    public var thickness: Double
     /// 0.0...1.0
-    var cornerRadiusXY: Double
+    public var cornerRadiusXY: Double
     /// 0.0...1.0
-    var cornerRadiusZ: Double
+    public var cornerRadiusZ: Double
     /// 0.0...1.0
-    var bottomRadiusOffset: Double
+    public var bottomRadiusOffset: Double
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case width = "Width"
         case height = "Height"
         case depth = "Depth"

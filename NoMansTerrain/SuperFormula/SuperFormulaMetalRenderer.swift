@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import Metal
 import MetalKit
 import simd

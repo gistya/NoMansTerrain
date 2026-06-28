@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import Foundation
 
 enum TerrainExportService {

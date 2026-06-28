@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 //
 //  Nah_Bruh_s_TerrainTests.swift
 //  Nah Bruh's TerrainTests

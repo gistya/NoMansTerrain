@@ -1,9 +1,9 @@
 import Foundation
 
-typealias BuildingVoxelType = NoiseVoxelType
-typealias ResourceVoxelType = NoiseVoxelType
+public typealias BuildingVoxelType = NoiseVoxelType
+public typealias ResourceVoxelType = NoiseVoxelType
 
-enum NoiseVoxelType: String, Codable, CaseIterable {
+public enum NoiseVoxelType: String, Codable, CaseIterable {
     case base = "Base"
     case rock = "Rock"
     case mountain = "Mountain"
@@ -16,27 +16,27 @@ enum NoiseVoxelType: String, Codable, CaseIterable {
     case randomRockOrSubstance = "RandomRockOrSubstance"
 }
 
-enum OffsetType: String, Codable, CaseIterable {
+public enum OffsetType: String, Codable, CaseIterable {
     case base = "Base"
     case all = "All"
     case zero = "Zero"
     case seaLevel = "SeaLevel"
 }
 
-enum WaterFadeType: String, Codable, CaseIterable {
+public enum WaterFadeType: String, Codable, CaseIterable {
     case none = "None"
     case above = "Above"
     case below = "Below"
 }
 
-enum DebugNoiseType: String, Codable, CaseIterable {
+public enum DebugNoiseType: String, Codable, CaseIterable {
     case uber = "Uber"
     case plane = "Plane"
     case check = "Check"
     case sine = "Sine"
 }
 
-enum NoiseGridType: String, Codable, CaseIterable {
+public enum NoiseGridType: String, Codable, CaseIterable {
     case superFormula01 = "SuperFormula_01"
     case superFormula02 = "SuperFormula_02"
     case superFormula03 = "SuperFormula_03"
@@ -61,10 +61,10 @@ enum NoiseGridType: String, Codable, CaseIterable {
     case file = "File"
 }
 
-extension NoiseGridType {
+public extension NoiseGridType {
     /// True for the SuperFormula-driven grid types (the ones whose SuperFormula 1/2
     /// settings actually matter).
-    var isSuperFormula: Bool {
+    public var isSuperFormula: Bool {
         switch self {
         case .superFormula, .superFormula01, .superFormula02, .superFormula03, .superFormula04,
              .superFormula05, .superFormula06, .superFormula07, .superFormula08, .superFormulaRandom:
@@ -75,7 +75,7 @@ extension NoiseGridType {
     }
 }
 
-enum FeatureType: String, Codable, CaseIterable {
+public enum FeatureType: String, Codable, CaseIterable {
     case tube = "Tube"
     case blob = "Blob"
 }

@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import SwiftUI
 
 /// Optional "apply to everything vs. just this section" choice for a `SectionActionBar`

@@ -2,14 +2,14 @@ import Foundation
 
 /// One fully-realized "insane" terrain: a Min/Max pair plus the game slot it occupies in
 /// the combined `voxelgeneratorsettings.MXML` and some human-facing flavor text.
-struct InsaneTerrain: Identifiable, Sendable {
-    let id: Int
-    let displayName: String
-    let blurb: String
+public struct InsaneTerrain: Identifiable, Sendable {
+    public let id: Int
+    public let displayName: String
+    public let blurb: String
     /// The game terrain slot (game order) this occupies in the combined file.
-    let preset: TerrainPreset
-    let min: TkVoxelGeneratorData
-    let max: TkVoxelGeneratorData
+    public let preset: TerrainPreset
+    public let min: TkVoxelGeneratorData
+    public let max: TkVoxelGeneratorData
 }
 
 /// "Claude's Insane Terrain" — a curated set of 31 deliberately bizarre terrains built by
@@ -20,15 +20,15 @@ struct InsaneTerrain: Identifiable, Sendable {
 /// complete base terrain (the bundle's aggregated Min/Max) by a per-recipe transform driven
 /// by a seeded RNG, so the set is identical every run. LODs are pinned to their max-safe
 /// values (lower LODs break in-game), but otherwise the values are intentionally extreme.
-enum ClaudeInsaneTerrains {
-    static let setName = "Claude's Insane Terrain"
+public enum ClaudeInsaneTerrains {
+    public static let setName = "Claude's Insane Terrain"
 
     /// Global spikiness dial, 0…1. At `1.0` the set is maximally unhinged; lower values pull
     /// the most aggressive drivers back toward documented-safe so spikes stay thicker than
     /// the voxel grid can mesh (very thin, high-frequency spikes tear holes in the terrain).
     /// Dropped to 0.4 after gaps + dense over-tessellated patches persisted at 0.55. Change
     /// this one number to dial the whole set hotter or tamer.
-    static let intensity = 0.4
+    public static let intensity = 0.4
 
     /// Interpolates from a tame value (used as `intensity` → 0) to a wild value (`intensity`
     /// → 1). Used on the handful of fields that drive sub-voxel spike thinness.
@@ -38,7 +38,7 @@ enum ClaudeInsaneTerrains {
 
     /// Builds all 31 insane terrains from a structurally-complete base (use the catalog's
     /// aggregated `globalMin`/`globalMax`). Pure and deterministic.
-    static func generate(base: SendableTerrain) -> [InsaneTerrain] {
+    public static func generate(base: SendableTerrain) -> [InsaneTerrain] {
         let presets = TerrainPreset.all
         return specs.enumerated().map { index, spec in
             var rng = SeededGenerator(seed: stableSeed(spec.name))
@@ -57,7 +57,7 @@ enum ClaudeInsaneTerrains {
     }
 
     /// Combined-file entries (game order) for the whole set.
-    static func combinedEntries(base: SendableTerrain) -> [NMSPropertySerializer.CombinedEntry] {
+    public static func combinedEntries(base: SendableTerrain) -> [NMSPropertySerializer.CombinedEntry] {
         generate(base: base).map {
             NMSPropertySerializer.CombinedEntry(name: $0.preset.fileBaseName, min: $0.min, max: $0.max)
         }
@@ -297,31 +297,31 @@ enum ClaudeInsaneTerrains {
 
 // MARK: - Recipe data
 
-extension ClaudeInsaneTerrains {
-    enum Theme: Sendable {
+public extension ClaudeInsaneTerrains {
+    public enum Theme: Sendable {
         case spires, blobs, terraces, floatingIslands, canyons, lattice, vortex, reef
 
-        var isSpiky: Bool { [.spires, .lattice, .reef, .canyons].contains(self) }
-        var isBlobby: Bool { [.blobs, .floatingIslands, .vortex].contains(self) }
-        var isFloating: Bool { [.floatingIslands, .vortex, .lattice].contains(self) }
+        public var isSpiky: Bool { [.spires, .lattice, .reef, .canyons].contains(self) }
+        public var isBlobby: Bool { [.blobs, .floatingIslands, .vortex].contains(self) }
+        public var isFloating: Bool { [.floatingIslands, .vortex, .lattice].contains(self) }
     }
 
     /// A compact recipe; the engine above expands these dials into hundreds of fields.
-    struct InsaneSpec: Sendable {
-        let name: String
-        let blurb: String
-        let primaryGrid: NoiseGridType
-        let secondaryGrid: NoiseGridType
-        let m: Double, n1: Double, n2: Double, n3: Double
-        let floatAmount: Double
-        let relief: Double
-        let twist: Double
-        let theme: Theme
-        let palette: [NoiseVoxelType]
+    public struct InsaneSpec: Sendable {
+        public let name: String
+        public let blurb: String
+        public let primaryGrid: NoiseGridType
+        public let secondaryGrid: NoiseGridType
+        public let m: Double, n1: Double, n2: Double, n3: Double
+        public let floatAmount: Double
+        public let relief: Double
+        public let twist: Double
+        public let theme: Theme
+        public let palette: [NoiseVoxelType]
     }
 
     /// Exactly 31 — one per game terrain slot (`TerrainPreset.all.count`).
-    static let specs: [InsaneSpec] = [
+    public static let specs: [InsaneSpec] = [
         InsaneSpec(name: "Crystalline Cathedral", blurb: "Towering faceted crystal spires in 6-fold symmetry.",
                    primaryGrid: .superFormula, secondaryGrid: .superFormulaRandom, m: 6, n1: 0.3, n2: 0.3, n3: 0.3,
                    floatAmount: 180, relief: 1.3, twist: 30, theme: .lattice, palette: [.rock, .substance2, .randomRock]),
@@ -421,10 +421,10 @@ extension ClaudeInsaneTerrains {
 // MARK: - Deterministic RNG
 
 /// SplitMix64 — a tiny deterministic generator so the insane set is byte-stable per run.
-struct SeededGenerator: RandomNumberGenerator {
+public struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
-    init(seed: UInt64) { state = seed == 0 ? 0x9E3779B97F4A7C15 : seed }
-    mutating func next() -> UInt64 {
+    public init(seed: UInt64) { state = seed == 0 ? 0x9E3779B97F4A7C15 : seed }
+    public mutating func next() -> UInt64 {
         state &+= 0x9E3779B97F4A7C15
         var z = state
         z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
@@ -434,7 +434,7 @@ struct SeededGenerator: RandomNumberGenerator {
 }
 
 /// FNV-1a 64-bit — a stable string hash (Swift's `Hasher` is per-run randomized).
-func stableSeed(_ s: String) -> UInt64 {
+public func stableSeed(_ s: String) -> UInt64 {
     var h: UInt64 = 0xCBF29CE484222325
     for byte in s.utf8 { h = (h ^ UInt64(byte)) &* 0x0000_0001_0000_01B3 }
     return h

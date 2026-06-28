@@ -1,34 +1,34 @@
 import Foundation
 
-struct TkNoiseFeatureData: Codable, Equatable {
-    var active: Bool
-    var maximumLOD: Int
-    var subtract: Bool
-    var trench: Bool
-    var voxelType: TkNoiseVoxelTypeEnum
-    var featureType: FeatureType
+public struct TkNoiseFeatureData: Codable, Equatable {
+    public var active: Bool
+    public var maximumLOD: Int
+    public var subtract: Bool
+    public var trench: Bool
+    public var voxelType: TkNoiseVoxelTypeEnum
+    public var featureType: FeatureType
     /// 1.0...128.0
-    var width: Double
+    public var width: Double
     /// 1.0...100.0
-    var height: Double
-    var octaves: Int
+    public var height: Double
+    public var octaves: Int
     /// 10.0...4000.0
-    var regionSize: Double
+    public var regionSize: Double
     /// 0.0...1.0
-    var ratio: Double
+    public var ratio: Double
     /// 0.0...128.0
-    var heightVarianceAmplitude: Double
+    public var heightVarianceAmplitude: Double
     /// 0.0...1000.0
-    var heightVarianceFrequency: Double
+    public var heightVarianceFrequency: Double
     /// -128.0...128.0
-    var heightOffset: Double
-    var offset: TkNoiseOffsetEnum
-    var smoothRadius: Double
-    var seedOffset: Int
+    public var heightOffset: Double
+    public var offset: TkNoiseOffsetEnum
+    public var smoothRadius: Double
+    public var seedOffset: Int
     /// 0.0...100.0
-    var tileBlendMeters: Double
+    public var tileBlendMeters: Double
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case active = "Active"
         case maximumLOD = "MaximumLOD"
         case subtract = "Subtract"

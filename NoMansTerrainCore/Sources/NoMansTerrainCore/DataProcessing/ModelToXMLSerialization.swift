@@ -1,8 +1,8 @@
 import Hastings
 import Foundation
 
-enum NMSPropertySerializer {
-    static func write(limit: Terrain.Limit, _ data: TkVoxelGeneratorData, to url: URL) throws {
+public enum NMSPropertySerializer {
+    public static func write(limit: Terrain.Limit, _ data: TkVoxelGeneratorData, to url: URL) throws {
         try write(rootName: limit.rawValue, data: data, to: url)
     }
 
@@ -28,15 +28,21 @@ enum NMSPropertySerializer {
     // MARK: - Combined settings file
 
     /// One terrain in the combined `cTkVoxelGeneratorSettingsArray` document.
-    struct CombinedEntry: Sendable {
-        let name: String
-        let min: TkVoxelGeneratorData
-        let max: TkVoxelGeneratorData
+    public struct CombinedEntry: Sendable {
+        public let name: String
+        public let min: TkVoxelGeneratorData
+        public let max: TkVoxelGeneratorData
+
+        public init(name: String, min: TkVoxelGeneratorData, max: TkVoxelGeneratorData) {
+            self.name = name
+            self.min = min
+            self.max = max
+        }
     }
 
     /// Builds the single "big daddy" file that the game ships — every terrain's
     /// Min/Max pair under one `cTkVoxelGeneratorSettingsArray` root — and writes it.
-    static func writeCombined(_ entries: [CombinedEntry], to url: URL) throws {
+    public static func writeCombined(_ entries: [CombinedEntry], to url: URL) throws {
         let doc = XDM.document {
             element("Data", attributes: [attr("template", "cTkVoxelGeneratorSettingsArray")]) {
                 element("Property", attributes: [attr("name", "TerrainSettings")]) {

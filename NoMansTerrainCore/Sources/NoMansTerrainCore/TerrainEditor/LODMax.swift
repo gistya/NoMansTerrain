@@ -3,24 +3,24 @@ import Foundation
 /// Types that carry layer `maximumLOD` fields which can be forced to their maximum
 /// (highest detail) when the user has "Lock LOD to max" enabled. Lower LOD values cause
 /// in-game rendering problems, so this pins them high across bulk operations.
-protocol MaxLODApplying {
+public protocol MaxLODApplying {
     /// Returns a copy of `self` with every `maximumLOD` set to its type's maximum.
     func applyingMaxLOD() -> Self
 }
 
 private enum LODMax {
     /// Noise layers allow LOD 1–4.
-    static let uber = TerrainFieldDocLimits.UberLayer.maximumLOD.upperBound   // 4
+    public static let uber = TerrainFieldDocLimits.UberLayer.maximumLOD.upperBound   // 4
     /// Grid layers allow LOD 1–3.
-    static let grid = TerrainFieldDocLimits.Grid.maximumLOD.upperBound        // 3
+    public static let grid = TerrainFieldDocLimits.Grid.maximumLOD.upperBound        // 3
     /// Features have no documented cap; the bundled presets only ever use up to 3.
-    static let feature = 3
+    public static let feature = 3
 }
 
 // MARK: - Leaf layers
 
 extension TkNoiseUberLayerData: MaxLODApplying {
-    func applyingMaxLOD() -> Self {
+    public func applyingMaxLOD() -> Self {
         var copy = self
         copy.maximumLOD = LODMax.uber
         return copy
@@ -28,7 +28,7 @@ extension TkNoiseUberLayerData: MaxLODApplying {
 }
 
 extension TkNoiseGridData: MaxLODApplying {
-    func applyingMaxLOD() -> Self {
+    public func applyingMaxLOD() -> Self {
         var copy = self
         copy.maximumLOD = LODMax.grid
         copy.turbulenceNoiseLayer = copy.turbulenceNoiseLayer.applyingMaxLOD()
@@ -37,7 +37,7 @@ extension TkNoiseGridData: MaxLODApplying {
 }
 
 extension TkNoiseFeatureData: MaxLODApplying {
-    func applyingMaxLOD() -> Self {
+    public func applyingMaxLOD() -> Self {
         var copy = self
         copy.maximumLOD = LODMax.feature
         return copy
@@ -45,7 +45,7 @@ extension TkNoiseFeatureData: MaxLODApplying {
 }
 
 extension TkNoiseCaveData: MaxLODApplying {
-    func applyingMaxLOD() -> Self {
+    public func applyingMaxLOD() -> Self {
         var copy = self
         copy.mouth = copy.mouth.applyingMaxLOD()
         copy.tunnel = copy.tunnel.applyingMaxLOD()
@@ -55,19 +55,19 @@ extension TkNoiseCaveData: MaxLODApplying {
 
 // Types without a `maximumLOD`: no-op.
 extension TkNoiseUberData: MaxLODApplying {
-    func applyingMaxLOD() -> Self { self }
+    public func applyingMaxLOD() -> Self { self }
 }
 extension TkNoiseSuperFormulaData: MaxLODApplying {
-    func applyingMaxLOD() -> Self { self }
+    public func applyingMaxLOD() -> Self { self }
 }
 extension TkNoiseSuperPrimitiveData: MaxLODApplying {
-    func applyingMaxLOD() -> Self { self }
+    public func applyingMaxLOD() -> Self { self }
 }
 
 // MARK: - Aggregates
 
 extension NoiseLayers: MaxLODApplying {
-    func applyingMaxLOD() -> NoiseLayers {
+    public func applyingMaxLOD() -> NoiseLayers {
         var copy = self
         let keyPaths: [WritableKeyPath<NoiseLayers, TkNoiseUberLayerData>] = [
             \.base, \.hill, \.mountain, \.rock, \.underWater, \.texture, \.elevation, \.continent
@@ -78,7 +78,7 @@ extension NoiseLayers: MaxLODApplying {
 }
 
 extension GridLayers: MaxLODApplying {
-    func applyingMaxLOD() -> GridLayers {
+    public func applyingMaxLOD() -> GridLayers {
         var copy = self
         let keyPaths: [WritableKeyPath<GridLayers, TkNoiseGridData>] = [
             \.small, \.large,
@@ -91,7 +91,7 @@ extension GridLayers: MaxLODApplying {
 }
 
 extension Features: MaxLODApplying {
-    func applyingMaxLOD() -> Features {
+    public func applyingMaxLOD() -> Features {
         var copy = self
         let keyPaths: [WritableKeyPath<Features, TkNoiseFeatureData>] = [
             \.river, \.crater, \.arches, \.archesSmall, \.blobs, \.blobsSmall, \.substance
@@ -102,7 +102,7 @@ extension Features: MaxLODApplying {
 }
 
 extension Caves: MaxLODApplying {
-    func applyingMaxLOD() -> Caves {
+    public func applyingMaxLOD() -> Caves {
         var copy = self
         copy.underground = copy.underground.applyingMaxLOD()
         return copy
@@ -110,7 +110,7 @@ extension Caves: MaxLODApplying {
 }
 
 extension TkVoxelGeneratorData: MaxLODApplying {
-    func applyingMaxLOD() -> TkVoxelGeneratorData {
+    public func applyingMaxLOD() -> TkVoxelGeneratorData {
         var copy = self
         copy.noiseLayers = copy.noiseLayers.applyingMaxLOD()
         copy.gridLayers = copy.gridLayers.applyingMaxLOD()

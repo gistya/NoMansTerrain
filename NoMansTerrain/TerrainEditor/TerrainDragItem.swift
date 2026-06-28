@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import CoreTransferable
 import SwiftData
 import UniformTypeIdentifiers

@@ -6,12 +6,12 @@ import Foundation
 /// fully buried. The engine's masks are seed-driven and statistical, so this is an
 /// approximation — good enough to author with, not a pixel-exact prediction.
 
-enum RegionMath {
-    static func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double {
+public enum RegionMath {
+    public static func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double {
         a + (b - a) * min(max(t, 0), 1)
     }
 
-    static func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double {
+    public static func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double {
         if edge0 == edge1 { return x < edge0 ? 0 : 1 }
         let t = min(max((x - edge0) / (edge1 - edge0), 0), 1)
         return t * t * (3 - 2 * t)
@@ -20,8 +20,8 @@ enum RegionMath {
 
 /// Deterministic 2D value noise (bilinear, smoothstep-interpolated) used as the stand-in
 /// for the engine's region noise.
-struct ValueNoise2D {
-    let seed: UInt64
+public struct ValueNoise2D {
+    public let seed: UInt64
 
     private func hash(_ xi: Int, _ yi: Int) -> Double {
         var h = seed
@@ -31,7 +31,7 @@ struct ValueNoise2D {
         return Double(h >> 11) * (1.0 / 9007199254740992.0) // [0,1)
     }
 
-    func value(_ x: Double, _ y: Double) -> Double {
+    public func value(_ x: Double, _ y: Double) -> Double {
         let x0 = Int(floor(x)), y0 = Int(floor(y))
         let fx = x - Double(x0), fy = y - Double(y0)
         let sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy)
@@ -44,32 +44,45 @@ struct ValueNoise2D {
 }
 
 /// A single layer's region settings as the editor sees them.
-struct RegionLayerState: Identifiable, Sendable, Equatable {
-    let id: String
-    let name: String
-    let colorIndex: Int
-    var active: Bool
-    var ratio: Double        // coverage 0…1
-    var scale: Double        // patch size (RegionScale, ~0.95…19.95)
-    var gain: Double         // edge contrast (RegionGain); ignored when !hasGain
-    var hasGain: Bool        // grids have no RegionGain
-    var elevation: Double    // heightOffset → tier (drives occlusion in the preview)
+public struct RegionLayerState: Identifiable, Sendable, Equatable {
+    public let id: String
+    public let name: String
+    public let colorIndex: Int
+    public var active: Bool
+    public var ratio: Double        // coverage 0…1
+    public var scale: Double        // patch size (RegionScale, ~0.95…19.95)
+    public var gain: Double         // edge contrast (RegionGain); ignored when !hasGain
+    public var hasGain: Bool        // grids have no RegionGain
+    public var elevation: Double    // heightOffset → tier (drives occlusion in the preview)
+
+    public init(id: String, name: String, colorIndex: Int, active: Bool, ratio: Double,
+                scale: Double, gain: Double, hasGain: Bool, elevation: Double) {
+        self.id = id
+        self.name = name
+        self.colorIndex = colorIndex
+        self.active = active
+        self.ratio = ratio
+        self.scale = scale
+        self.gain = gain
+        self.hasGain = hasGain
+        self.elevation = elevation
+    }
 }
 
-enum RegionMask {
+public enum RegionMask {
     /// Visual world span sampled by the preview; a handful of patches across the view.
-    static let worldSpan = 8.0
+    public static let worldSpan = 8.0
 
-    static func frequency(scale: Double) -> Double {
+    public static func frequency(scale: Double) -> Double {
         6.0 / max(scale, 0.5) // bigger scale → bigger patches → lower frequency
     }
 
-    static func edge(gain: Double, hasGain: Bool) -> Double {
+    public static func edge(gain: Double, hasGain: Bool) -> Double {
         hasGain ? 0.25 / (1 + max(gain, 0)) : 0.09 // higher gain → sharper mask edge
     }
 
     /// Mask coverage in [0,1] at a normalized world coordinate.
-    static func mask(_ layer: RegionLayerState, x: Double, y: Double) -> Double {
+    public static func mask(_ layer: RegionLayerState, x: Double, y: Double) -> Double {
         let r = min(max(layer.ratio, 0), 1)
         if r <= 0 { return 0 }
         if r >= 1 { return 1 }
@@ -85,27 +98,27 @@ enum RegionMask {
     }
 }
 
-struct RegionFieldCell: Sendable {
+public struct RegionFieldCell: Sendable {
     /// Index into the *active* layer list that reaches the surface here (nil = bare ground).
-    var surface: Int?
-    var height: Double      // 0…1 normalized bar height
-    var colorIndex: Int     // -1 when bare
+    public var surface: Int?
+    public var height: Double      // 0…1 normalized bar height
+    public var colorIndex: Int     // -1 when bare
 }
 
-struct RegionField: Sendable {
-    let resolution: Int
-    var cells: [RegionFieldCell]
+public struct RegionField: Sendable {
+    public let resolution: Int
+    public var cells: [RegionFieldCell]
     /// Layer id → number of cells where it is the surface (its visibility).
-    var winCounts: [String: Int]
+    public var winCounts: [String: Int]
 
-    func cell(_ i: Int, _ j: Int) -> RegionFieldCell { cells[j * resolution + i] }
+    public func cell(_ i: Int, _ j: Int) -> RegionFieldCell { cells[j * resolution + i] }
 }
 
-enum RegionFieldSampler {
+public enum RegionFieldSampler {
     /// Samples the combined region field. At each cell the *highest-elevation* active layer
     /// whose mask is present wins the surface (so a broad high layer visibly buries lower
     /// ones — which is exactly what Auto-Tier fixes).
-    static func sample(layers: [RegionLayerState], resolution: Int) -> RegionField {
+    public static func sample(layers: [RegionLayerState], resolution: Int) -> RegionField {
         let active = layers.filter { $0.active }
         let elevs = active.map(\.elevation)
         let minE = elevs.min() ?? 0, maxE = elevs.max() ?? 1
@@ -144,7 +157,7 @@ enum RegionFieldSampler {
     /// Spreads the active layers across distinct coverage / patch-size / elevation tiers so
     /// each is statistically likely to win some surface cells (i.e. be visible). Lower tiers
     /// get broad coverage; higher tiers get rare peaks that poke through.
-    static func autoTier(_ layers: [RegionLayerState]) -> [RegionLayerState] {
+    public static func autoTier(_ layers: [RegionLayerState]) -> [RegionLayerState] {
         var result = layers
         let activeIdx = layers.indices.filter { layers[$0].active }
         let n = activeIdx.count

@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import SwiftUI
 
 /// Color-codes layers in both the squares and the 3D histogram.

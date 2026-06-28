@@ -1,51 +1,51 @@
 import Foundation
 
-struct TkNoiseUberData: Codable, Equatable {
+public struct TkNoiseUberData: Codable, Equatable {
     /// 0...10
-    var octaves: Int
+    public var octaves: Int
     /// 0.0...1.0
     /// -0.3...0.9
-    var slopeGain: Double
+    public var slopeGain: Double
     /// 0.0...1.0
     /// -0.2...0.5
-    var slopeBias: Double
+    public var slopeBias: Double
     /// -1.0...1.0
     /// -1, 0, 1
-    var sharpToRoundFeatures: Double
+    public var sharpToRoundFeatures: Double
     /// 0.0...0.5
-    var amplifyFeatures: Double
+    public var amplifyFeatures: Double
     /// -0.4...0.4
     /// -0.1...0.21
-    var perturbFeatures: Double
+    public var perturbFeatures: Double
     /// 0.0...0.25
-    var altitudeErosion: Double
+    public var altitudeErosion: Double
     /// 0.0...1.0
     /// 0 or 1
-    var ridgeErosion: Double
+    public var ridgeErosion: Double
     /// 0.0...1.0
     /// 0 or 1
-    var slopeErosion: Double
+    public var slopeErosion: Double
     /// 1.8...2.2
     /// 2
-    var lacunarity: Double
+    public var lacunarity: Double
     /// 0.35...0.60
     /// 0.5
-    var gain: Double
+    public var gain: Double
     /// -2.0...2.0
     /// 0-0.5
-    var remapFromMin: Double
+    public var remapFromMin: Double
     /// -2.0...2.0
     /// 0.6-1.0
-    var remapFromMax: Double
+    public var remapFromMax: Double
     /// -2.0...2.0
     /// 0
-    var remapToMin: Double
+    public var remapToMin: Double
     /// -2.0...2.0
     /// 0.9-1.0
-    var remapToMax: Double
-    var debugNoiseType: DebugNoiseType
+    public var remapToMax: Double
+    public var debugNoiseType: DebugNoiseType
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case octaves = "Octaves"
         case slopeGain = "SlopeGain"
         case slopeBias = "SlopeBias"

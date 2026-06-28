@@ -4,21 +4,25 @@ import PackageDescription
 
 let package = Package(
     name: "NoMansTerrainCore",
+    platforms: [.macOS(.v15)],
     products: [
         .library(
             name: "NoMansTerrainCore",
             targets: ["NoMansTerrainCore"]
         ),
     ],
-    dependencies: [.package(path: "../hastings")],
+    dependencies: [.package(path: "../../hastings")],
     targets: [
         .target(
             name: "NoMansTerrainCore",
-            dependencies: ["hastings"],
+            dependencies: [.product(name: "Hastings", package: "hastings")]
         ),
         .testTarget(
             name: "NoMansTerrainCoreTests",
             dependencies: ["NoMansTerrainCore"]
         ),
-    ]
+    ],
+    // Match the app target's language mode so moving files in introduces no new
+    // (Swift 6 strict-concurrency) compile differences.
+    swiftLanguageModes: [.v5]
 )

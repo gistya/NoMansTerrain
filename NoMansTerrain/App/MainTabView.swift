@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import SwiftUI
 
 struct MainTabView: View {

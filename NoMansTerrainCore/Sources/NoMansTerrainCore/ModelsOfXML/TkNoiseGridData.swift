@@ -1,63 +1,63 @@
 import Foundation
 
-struct TkNoiseGridData: Codable, Equatable {
-    var active: Bool
+public struct TkNoiseGridData: Codable, Equatable {
+    public var active: Bool
     /// 1...3
-    var maximumLOD: Int
-    var subtract: Bool
-    var swapZY: Bool
-    var hemisphere: Bool
-    var voxelType: TkNoiseVoxelTypeEnum
-    var noiseGridType: NoiseGridType
-    var filename: String
+    public var maximumLOD: Int
+    public var subtract: Bool
+    public var swapZY: Bool
+    public var hemisphere: Bool
+    public var voxelType: TkNoiseVoxelTypeEnum
+    public var noiseGridType: NoiseGridType
+    public var filename: String
     /// 0.0...9999.0
-    var minWidth: Double
+    public var minWidth: Double
     /// 0.0...9999.0
-    var maxWidth: Double
+    public var maxWidth: Double
     /// 0.0...999.0
-    var minHeight: Double
+    public var minHeight: Double
     /// 0.0...999.0
-    var maxHeight: Double
+    public var maxHeight: Double
     /// -128.0...128.0
-    var minHeightOffset: Double
+    public var minHeightOffset: Double
     /// -128.0...128.0
-    var maxHeightOffset: Double
+    public var maxHeightOffset: Double
     /// -128.0...128.0
-    var heightOffset: Double
-    var offset: TkNoiseOffsetEnum
+    public var heightOffset: Double
+    public var offset: TkNoiseOffsetEnum
     /// 0.0...1.0
-    var regionRatio: Double
+    public var regionRatio: Double
     /// 0.95...19.95
-    var regionScale: Double
-    var turbulenceNoiseLayer: TkNoiseUberLayerData
+    public var regionScale: Double
+    public var turbulenceNoiseLayer: TkNoiseUberLayerData
     /// 0.0...90.0
-    var yaw: Double
+    public var yaw: Double
     /// 0.0...90.0
-    var pitch: Double
+    public var pitch: Double
     /// 0.0...90.0
-    var roll: Double
+    public var roll: Double
     /// 0.0...90.0
     /// 0/45/90
-    var varyYaw: Double
+    public var varyYaw: Double
     /// 0.0...90.0
-    var varyPitch: Double
+    public var varyPitch: Double
     /// 0.0...90.0
-    var varyRoll: Double
+    public var varyRoll: Double
     /// 0.0...100.0
     /// 0-20
-    var smoothRadius: Double
+    public var smoothRadius: Double
     /// ? 2 ?
-    var seedOffset: Int
+    public var seedOffset: Int
     /// 0.0...1.0
-    var randomPrimitive: Double
-    var superFormula1: TkNoiseSuperFormulaData
-    var superFormula2: TkNoiseSuperFormulaData
-    var superPrimitive: TkNoiseSuperPrimitiveData
+    public var randomPrimitive: Double
+    public var superFormula1: TkNoiseSuperFormulaData
+    public var superFormula2: TkNoiseSuperFormulaData
+    public var superPrimitive: TkNoiseSuperPrimitiveData
     /// 0.0...100.0
     /// 0-16
-    var tileBlendMeters: Double
+    public var tileBlendMeters: Double
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case active = "Active"
         case maximumLOD = "MaximumLOD"
         case subtract = "Subtract"

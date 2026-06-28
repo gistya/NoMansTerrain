@@ -10,6 +10,8 @@
 		7385C6362FE03EBD005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6352FE03EBD005780E2 /* Hastings */; };
 		7385C6382FE03EC4005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6372FE03EC4005780E2 /* Hastings */; };
 		7385C63A2FE03EC8005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6392FE03EC8005780E2 /* Hastings */; };
+		73C0DE000000000000000A01 /* NoMansTerrainCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0DE000000000000000A02 /* NoMansTerrainCore */; };
+		73C0DE000000000000000B01 /* NoMansTerrainCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0DE000000000000000B02 /* NoMansTerrainCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7385C6362FE03EBD005780E2 /* Hastings in Frameworks */,
+				73C0DE000000000000000A01 /* NoMansTerrainCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,6 +101,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7385C6382FE03EC4005780E2 /* Hastings in Frameworks */,
+				73C0DE000000000000000B01 /* NoMansTerrainCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +170,7 @@
 			name = NoMansTerrain;
 			packageProductDependencies = (
 				7385C6352FE03EBD005780E2 /* Hastings */,
+				73C0DE000000000000000A02 /* NoMansTerrainCore */,
 			);
 			productName = "Nah Bruh's Terrain";
 			productReference = 7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */;
@@ -191,6 +196,7 @@
 			name = NoMansTerrainTests;
 			packageProductDependencies = (
 				7385C6372FE03EC4005780E2 /* Hastings */,
+				73C0DE000000000000000B02 /* NoMansTerrainCore */,
 			);
 			productName = "Nah Bruh's TerrainTests";
 			productReference = 7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */;
@@ -750,6 +756,14 @@
 		7385C6392FE03EC8005780E2 /* Hastings */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Hastings;
+		};
+		73C0DE000000000000000A02 /* NoMansTerrainCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoMansTerrainCore;
+		};
+		73C0DE000000000000000B02 /* NoMansTerrainCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoMansTerrainCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

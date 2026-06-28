@@ -1,48 +1,48 @@
 import Foundation
 
-struct TkNoiseUberLayerData: Codable, Equatable {
-    var noiseData: TkNoiseUberData
-    var active: Bool
+public struct TkNoiseUberLayerData: Codable, Equatable {
+    public var noiseData: TkNoiseUberData
+    public var active: Bool
     /// 1...4
-    var maximumLOD: Int
+    public var maximumLOD: Int
     /// true for rivers/caes
-    var subtract: Bool
-    var voxelType: TkNoiseVoxelTypeEnum
+    public var subtract: Bool
+    public var voxelType: TkNoiseVoxelTypeEnum
     /// 1.27...128.27
-    var height: Double
+    public var height: Double
     /// 0.0...9999.0
-    var width: Double
+    public var width: Double
     /// 0.0...1.0
     /// 0.2-1
-    var regionRatio: Double
+    public var regionRatio: Double
     /// 0.95...19.95
     /// 1-5
-    var regionScale: Double
+    public var regionScale: Double
     /// 0.0...10.0
     /// 1-3
-    var regionGain: Double
+    public var regionGain: Double
     /// 0.0...20.0
-    var smoothRadius: Double
+    public var smoothRadius: Double
     /// -128.0...128.0
     /// -8 to?
-    var heightOffset: Double
-    var offset: TkNoiseOffsetEnum
-    var waterFade: WaterFadeType
+    public var heightOffset: Double
+    public var offset: TkNoiseOffsetEnum
+    public var waterFade: WaterFadeType
     /// 0.0...16.0
     /// 0-2.485044
-    var plateauStratas: Double
+    public var plateauStratas: Double
     /// 1...4
-    var plateauSharpness: Int
+    public var plateauSharpness: Int
     /// 0.0...1000.0
     /// 0 for continent, 100 for other
-    var plateauRegionSize: Double
+    public var plateauRegionSize: Double
     /// 0...3
-    var seedOffset: Int
+    public var seedOffset: Int
     /// 0.0...100.0
     /// 0-48
-    var tileBlendMeters: Double
+    public var tileBlendMeters: Double
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case noiseData = "NoiseData"
         case active = "Active"
         case maximumLOD = "MaximumLOD"

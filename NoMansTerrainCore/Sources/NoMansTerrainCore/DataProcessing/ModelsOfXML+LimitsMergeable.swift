@@ -1,25 +1,25 @@
 
 extension BaseSeed: LimitsMergeable {
-    func merged(with other: BaseSeed, direction: MergeDirection) -> BaseSeed {
+    public func merged(with other: BaseSeed, direction: MergeDirection) -> BaseSeed {
         BaseSeed(seed: mergeOptionalInt(seed, other.seed, direction: direction))
     }
 }
 
 
 extension TkNoiseVoxelTypeEnum: LimitsMergeable {
-    func merged(with other: TkNoiseVoxelTypeEnum, direction: MergeDirection) -> TkNoiseVoxelTypeEnum {
+    public func merged(with other: TkNoiseVoxelTypeEnum, direction: MergeDirection) -> TkNoiseVoxelTypeEnum {
         TkNoiseVoxelTypeEnum(noiseVoxelType: mergeEnum(noiseVoxelType, other.noiseVoxelType, direction: direction))
     }
 }
 
 extension TkNoiseOffsetEnum: LimitsMergeable {
-    func merged(with other: TkNoiseOffsetEnum, direction: MergeDirection) -> TkNoiseOffsetEnum {
+    public func merged(with other: TkNoiseOffsetEnum, direction: MergeDirection) -> TkNoiseOffsetEnum {
         TkNoiseOffsetEnum(offsetType: mergeEnum(offsetType, other.offsetType, direction: direction))
     }
 }
 
 extension TkNoiseSuperFormulaData: LimitsMergeable {
-    func merged(with other: TkNoiseSuperFormulaData, direction: MergeDirection) -> TkNoiseSuperFormulaData {
+    public func merged(with other: TkNoiseSuperFormulaData, direction: MergeDirection) -> TkNoiseSuperFormulaData {
         TkNoiseSuperFormulaData(
             formM: merge(formM, other.formM, direction: direction),
             formN1: merge(formN1, other.formN1, direction: direction),
@@ -30,7 +30,7 @@ extension TkNoiseSuperFormulaData: LimitsMergeable {
 }
 
 extension TkNoiseSuperPrimitiveData: LimitsMergeable {
-    func merged(with other: TkNoiseSuperPrimitiveData, direction: MergeDirection) -> TkNoiseSuperPrimitiveData {
+    public func merged(with other: TkNoiseSuperPrimitiveData, direction: MergeDirection) -> TkNoiseSuperPrimitiveData {
         TkNoiseSuperPrimitiveData(
             width: merge(width, other.width, direction: direction),
             height: merge(height, other.height, direction: direction),
@@ -44,7 +44,7 @@ extension TkNoiseSuperPrimitiveData: LimitsMergeable {
 }
 
 extension TkNoiseUberData: LimitsMergeable {
-    func merged(with other: TkNoiseUberData, direction: MergeDirection) -> TkNoiseUberData {
+    public func merged(with other: TkNoiseUberData, direction: MergeDirection) -> TkNoiseUberData {
         TkNoiseUberData(
             octaves: merge(octaves, other.octaves, direction: direction),
             slopeGain: merge(slopeGain, other.slopeGain, direction: direction),
@@ -67,7 +67,7 @@ extension TkNoiseUberData: LimitsMergeable {
 }
 
 extension TkNoiseUberLayerData: LimitsMergeable {
-    func merged(with other: TkNoiseUberLayerData, direction: MergeDirection) -> TkNoiseUberLayerData {
+    public func merged(with other: TkNoiseUberLayerData, direction: MergeDirection) -> TkNoiseUberLayerData {
         TkNoiseUberLayerData(
             noiseData: noiseData.merged(with: other.noiseData, direction: direction),
             active: mergeBool(active, other.active, direction: direction),
@@ -93,7 +93,7 @@ extension TkNoiseUberLayerData: LimitsMergeable {
 }
 
 extension TkNoiseGridData: LimitsMergeable {
-    func merged(with other: TkNoiseGridData, direction: MergeDirection) -> TkNoiseGridData {
+    public func merged(with other: TkNoiseGridData, direction: MergeDirection) -> TkNoiseGridData {
         TkNoiseGridData(
             active: mergeBool(active, other.active, direction: direction),
             maximumLOD: merge(maximumLOD, other.maximumLOD, direction: direction),
@@ -132,7 +132,7 @@ extension TkNoiseGridData: LimitsMergeable {
 }
 
 extension TkNoiseFeatureData: LimitsMergeable {
-    func merged(with other: TkNoiseFeatureData, direction: MergeDirection) -> TkNoiseFeatureData {
+    public func merged(with other: TkNoiseFeatureData, direction: MergeDirection) -> TkNoiseFeatureData {
         TkNoiseFeatureData(
             active: mergeBool(active, other.active, direction: direction),
             maximumLOD: merge(maximumLOD, other.maximumLOD, direction: direction),
@@ -157,7 +157,7 @@ extension TkNoiseFeatureData: LimitsMergeable {
 }
 
 extension TkNoiseCaveData: LimitsMergeable {
-    func merged(with other: TkNoiseCaveData, direction: MergeDirection) -> TkNoiseCaveData {
+    public func merged(with other: TkNoiseCaveData, direction: MergeDirection) -> TkNoiseCaveData {
         TkNoiseCaveData(
             mouth: mouth.merged(with: other.mouth, direction: direction),
             tunnel: tunnel.merged(with: other.tunnel, direction: direction)
@@ -166,7 +166,7 @@ extension TkNoiseCaveData: LimitsMergeable {
 }
 
 extension NoiseLayers: LimitsMergeable {
-    func merged(with other: NoiseLayers, direction: MergeDirection) -> NoiseLayers {
+    public func merged(with other: NoiseLayers, direction: MergeDirection) -> NoiseLayers {
         NoiseLayers(
             base: base.merged(with: other.base, direction: direction),
             hill: hill.merged(with: other.hill, direction: direction),
@@ -181,7 +181,7 @@ extension NoiseLayers: LimitsMergeable {
 }
 
 extension GridLayers: LimitsMergeable {
-    func merged(with other: GridLayers, direction: MergeDirection) -> GridLayers {
+    public func merged(with other: GridLayers, direction: MergeDirection) -> GridLayers {
         GridLayers(
             small: small.merged(with: other.small, direction: direction),
             large: large.merged(with: other.large, direction: direction),
@@ -197,7 +197,7 @@ extension GridLayers: LimitsMergeable {
 }
 
 extension Features: LimitsMergeable {
-    func merged(with other: Features, direction: MergeDirection) -> Features {
+    public func merged(with other: Features, direction: MergeDirection) -> Features {
         Features(
             river: river.merged(with: other.river, direction: direction),
             crater: crater.merged(with: other.crater, direction: direction),
@@ -211,13 +211,13 @@ extension Features: LimitsMergeable {
 }
 
 extension Caves: LimitsMergeable {
-    func merged(with other: Caves, direction: MergeDirection) -> Caves {
+    public func merged(with other: Caves, direction: MergeDirection) -> Caves {
         Caves(underground: underground.merged(with: other.underground, direction: direction))
     }
 }
 
 extension TkVoxelGeneratorData: LimitsMergeable {
-    func merged(with other: TkVoxelGeneratorData, direction: MergeDirection) -> TkVoxelGeneratorData {
+    public func merged(with other: TkVoxelGeneratorData, direction: MergeDirection) -> TkVoxelGeneratorData {
         TkVoxelGeneratorData(
             baseSeed: baseSeed.merged(with: other.baseSeed, direction: direction),
             seaLevel: merge(seaLevel, other.seaLevel, direction: direction),

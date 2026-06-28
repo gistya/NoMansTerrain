@@ -7,15 +7,20 @@
 
 import Foundation
 
-struct SendableTerrain {
-    var min: TkVoxelGeneratorData
-    var max: TkVoxelGeneratorData
+public struct SendableTerrain {
+    public var min: TkVoxelGeneratorData
+    public var max: TkVoxelGeneratorData
+
+    public init(min: TkVoxelGeneratorData, max: TkVoxelGeneratorData) {
+        self.min = min
+        self.max = max
+    }
 }
 
-extension [SendableTerrain] {
+public extension [SendableTerrain] {
     /// Find the lowest and highest limits of all the mins and maxs.
     /// - Returns: a `SendableTerrain` whose min and max have all the min and max values of all the mins and maxs.
-    func aggregate() throws -> SendableTerrain {
+    public func aggregate() throws -> SendableTerrain {
         func aggregate(_ values: [TkVoxelGeneratorData], direction: MergeDirection) -> TkVoxelGeneratorData? {
             guard let first = values.first else { return nil }
             return values.dropFirst().reduce(first) { $0.merged(with: $1, direction: direction) }

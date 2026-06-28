@@ -1,61 +1,61 @@
 import Foundation
 
-enum TerrainEditorOperations {
+public enum TerrainEditorOperations {
     // MARK: - Apply global limits
 
-    static func applyGlobalMin(to minData: inout TkVoxelGeneratorData, from global: TkVoxelGeneratorData) {
+    public static func applyGlobalMin(to minData: inout TkVoxelGeneratorData, from global: TkVoxelGeneratorData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkVoxelGeneratorData, from global: TkVoxelGeneratorData) {
+    public static func applyGlobalMax(to maxData: inout TkVoxelGeneratorData, from global: TkVoxelGeneratorData) {
         maxData = global
     }
 
-    static func applyGlobalMin(to minLayer: inout TkNoiseUberLayerData, from global: TkNoiseUberLayerData) {
+    public static func applyGlobalMin(to minLayer: inout TkNoiseUberLayerData, from global: TkNoiseUberLayerData) {
         minLayer = global
     }
 
-    static func applyGlobalMax(to maxLayer: inout TkNoiseUberLayerData, from global: TkNoiseUberLayerData) {
+    public static func applyGlobalMax(to maxLayer: inout TkNoiseUberLayerData, from global: TkNoiseUberLayerData) {
         maxLayer = global
     }
 
-    static func applyGlobalMin(to minData: inout TkNoiseUberData, from global: TkNoiseUberData) {
+    public static func applyGlobalMin(to minData: inout TkNoiseUberData, from global: TkNoiseUberData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkNoiseUberData, from global: TkNoiseUberData) {
+    public static func applyGlobalMax(to maxData: inout TkNoiseUberData, from global: TkNoiseUberData) {
         maxData = global
     }
 
-    static func applyGlobalMin(to minData: inout TkNoiseGridData, from global: TkNoiseGridData) {
+    public static func applyGlobalMin(to minData: inout TkNoiseGridData, from global: TkNoiseGridData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkNoiseGridData, from global: TkNoiseGridData) {
+    public static func applyGlobalMax(to maxData: inout TkNoiseGridData, from global: TkNoiseGridData) {
         maxData = global
     }
 
-    static func applyGlobalMin(to minData: inout TkNoiseFeatureData, from global: TkNoiseFeatureData) {
+    public static func applyGlobalMin(to minData: inout TkNoiseFeatureData, from global: TkNoiseFeatureData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkNoiseFeatureData, from global: TkNoiseFeatureData) {
+    public static func applyGlobalMax(to maxData: inout TkNoiseFeatureData, from global: TkNoiseFeatureData) {
         maxData = global
     }
 
-    static func applyGlobalMin(to minData: inout TkNoiseSuperFormulaData, from global: TkNoiseSuperFormulaData) {
+    public static func applyGlobalMin(to minData: inout TkNoiseSuperFormulaData, from global: TkNoiseSuperFormulaData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkNoiseSuperFormulaData, from global: TkNoiseSuperFormulaData) {
+    public static func applyGlobalMax(to maxData: inout TkNoiseSuperFormulaData, from global: TkNoiseSuperFormulaData) {
         maxData = global
     }
 
-    static func applyGlobalMin(to minData: inout TkNoiseSuperPrimitiveData, from global: TkNoiseSuperPrimitiveData) {
+    public static func applyGlobalMin(to minData: inout TkNoiseSuperPrimitiveData, from global: TkNoiseSuperPrimitiveData) {
         minData = global
     }
 
-    static func applyGlobalMax(to maxData: inout TkNoiseSuperPrimitiveData, from global: TkNoiseSuperPrimitiveData) {
+    public static func applyGlobalMax(to maxData: inout TkNoiseSuperPrimitiveData, from global: TkNoiseSuperPrimitiveData) {
         maxData = global
     }
 
@@ -63,7 +63,7 @@ enum TerrainEditorOperations {
 
     /// Turns on every `active` toggle in a terrain file: all noise layers, grid
     /// layers (including their turbulence layer), features, and cave features.
-    static func activateAll(_ data: inout TkVoxelGeneratorData) {
+    public static func activateAll(_ data: inout TkVoxelGeneratorData) {
         let noiseLayers: [WritableKeyPath<NoiseLayers, TkNoiseUberLayerData>] = [
             \.base, \.hill, \.mountain, \.rock, \.underWater, \.texture, \.elevation, \.continent
         ]
@@ -107,13 +107,13 @@ enum TerrainEditorOperations {
     /// the aggregated envelope and its documented limit. Call with `min` seeded from the
     /// bundle's aggregated globalMin and `max` from globalMax; undocumented fields (and all
     /// enums, bools, seeds) are left at the aggregated values already present.
-    static func applySafeDefaults(min: inout TkVoxelGeneratorData, max: inout TkVoxelGeneratorData) {
+    public static func applySafeDefaults(min: inout TkVoxelGeneratorData, max: inout TkVoxelGeneratorData) {
         applyDocumentedLimits(min: &min, max: &max, mode: .widen)
     }
 
     /// Snaps every documented field to its absolute documented bounds (min = docLower,
     /// max = docUpper). Undocumented fields are left at the values already present.
-    static func applyAbsoluteBounds(min: inout TkVoxelGeneratorData, max: inout TkVoxelGeneratorData) {
+    public static func applyAbsoluteBounds(min: inout TkVoxelGeneratorData, max: inout TkVoxelGeneratorData) {
         applyDocumentedLimits(min: &min, max: &max, mode: .absolute)
     }
 
@@ -260,7 +260,7 @@ enum TerrainEditorOperations {
 
     // MARK: - Randomize
 
-    static func randomizeRootScalars(
+    public static func randomizeRootScalars(
         minData: inout TkVoxelGeneratorData,
         maxData: inout TkVoxelGeneratorData,
         refMin: TkVoxelGeneratorData,
@@ -269,7 +269,7 @@ enum TerrainEditorOperations {
         randomizeScalars(min: &minData, max: &maxData, refMin: refMin, refMax: refMax)
     }
 
-    static func randomizeRoot(
+    public static func randomizeRoot(
         minData: inout TkVoxelGeneratorData,
         maxData: inout TkVoxelGeneratorData,
         refMin: TkVoxelGeneratorData,
@@ -282,7 +282,7 @@ enum TerrainEditorOperations {
         randomizeCaves(min: &minData.caves, max: &maxData.caves, refMin: refMin.caves, refMax: refMax.caves)
     }
 
-    static func randomizeUberLayer(
+    public static func randomizeUberLayer(
         min: inout TkNoiseUberLayerData,
         max: inout TkNoiseUberLayerData,
         refMin: TkNoiseUberLayerData,
@@ -309,7 +309,7 @@ enum TerrainEditorOperations {
         randomizeDoublePair(min: &min.tileBlendMeters, max: &max.tileBlendMeters, documented: TerrainFieldDocLimits.UberLayer.tileBlendMeters, hasDoc: true, refMin: refMin.tileBlendMeters, refMax: refMax.tileBlendMeters)
     }
 
-    static func randomizeUberData(
+    public static func randomizeUberData(
         min: inout TkNoiseUberData,
         max: inout TkNoiseUberData,
         refMin: TkNoiseUberData,
@@ -333,7 +333,7 @@ enum TerrainEditorOperations {
         randomizeEnumPair(min: &min.debugNoiseType, max: &max.debugNoiseType, refMin: refMin.debugNoiseType, refMax: refMax.debugNoiseType, hasDoc: false)
     }
 
-    static func randomizeGrid(
+    public static func randomizeGrid(
         min: inout TkNoiseGridData,
         max: inout TkNoiseGridData,
         refMin: TkNoiseGridData,
@@ -372,7 +372,7 @@ enum TerrainEditorOperations {
         randomizeDoublePair(min: &min.tileBlendMeters, max: &max.tileBlendMeters, documented: TerrainFieldDocLimits.Grid.tileBlendMeters, hasDoc: true, refMin: refMin.tileBlendMeters, refMax: refMax.tileBlendMeters)
     }
 
-    static func randomizeFeature(
+    public static func randomizeFeature(
         min: inout TkNoiseFeatureData,
         max: inout TkNoiseFeatureData,
         refMin: TkNoiseFeatureData,
@@ -398,7 +398,7 @@ enum TerrainEditorOperations {
         randomizeDoublePair(min: &min.tileBlendMeters, max: &max.tileBlendMeters, documented: TerrainFieldDocLimits.Feature.tileBlendMeters, hasDoc: true, refMin: refMin.tileBlendMeters, refMax: refMax.tileBlendMeters)
     }
 
-    static func randomizeSuperFormula(
+    public static func randomizeSuperFormula(
         min: inout TkNoiseSuperFormulaData,
         max: inout TkNoiseSuperFormulaData,
         refMin: TkNoiseSuperFormulaData,
@@ -410,7 +410,7 @@ enum TerrainEditorOperations {
         randomizeDoublePair(min: &min.formN3, max: &max.formN3, documented: TerrainFieldDocLimits.SuperFormula.formN3, hasDoc: true, refMin: refMin.formN3, refMax: refMax.formN3)
     }
 
-    static func randomizeSuperPrimitive(
+    public static func randomizeSuperPrimitive(
         min: inout TkNoiseSuperPrimitiveData,
         max: inout TkNoiseSuperPrimitiveData,
         refMin: TkNoiseSuperPrimitiveData,

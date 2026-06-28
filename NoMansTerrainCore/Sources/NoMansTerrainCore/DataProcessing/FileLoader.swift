@@ -1,23 +1,25 @@
 import Foundation
 import Hastings
 
-typealias XMLParser = HastingsXML.XMLParser
-typealias XMLSerializer = HastingsXML.XMLSerializer
+public typealias XMLParser = HastingsXML.XMLParser
+public typealias XMLSerializer = HastingsXML.XMLSerializer
 
-actor FileLoader {
+public actor FileLoader {
     private let decoder = XMLDecoder(keyStrategy: .attribute(name: "name", value: "value"))
 
-    func makeModelsOfXML(in bundle: Bundle = .main) throws -> [SendableTerrain] {
+    public init() {}
+
+    public func makeModelsOfXML(in bundle: Bundle = .main) throws -> [SendableTerrain] {
         let pairs = try matchedTerrainPairs(in: bundle)
         return pairs.map { SendableTerrain(min: $0.min, max: $0.max) }
     }
 
-    func availablePresets(in bundle: Bundle = .main) throws -> [TerrainPreset] {
+    public func availablePresets(in bundle: Bundle = .main) throws -> [TerrainPreset] {
         let pairs = try matchedTerrainPairs(in: bundle)
         return pairs.map(\.preset).sorted { $0.displayName < $1.displayName }
     }
 
-    func loadTerrainPair(preset: TerrainPreset, in bundle: Bundle = .main) throws -> SendableTerrain {
+    public func loadTerrainPair(preset: TerrainPreset, in bundle: Bundle = .main) throws -> SendableTerrain {
         guard let minURL = bundle.url(forResource: preset.fileBaseName + "_Min", withExtension: "xml"),
               let maxURL = bundle.url(forResource: preset.fileBaseName + "_Max", withExtension: "xml")
         else {
@@ -30,9 +32,9 @@ actor FileLoader {
     }
 
     private struct MatchedTerrainPair {
-        var preset: TerrainPreset
-        var min: TkVoxelGeneratorData
-        var max: TkVoxelGeneratorData
+        public var preset: TerrainPreset
+        public var min: TkVoxelGeneratorData
+        public var max: TkVoxelGeneratorData
     }
 
     private func matchedTerrainPairs(in bundle: Bundle) throws -> [MatchedTerrainPair] {
@@ -61,7 +63,7 @@ actor FileLoader {
     }
     
     @discardableResult
-    func write(terrain: Terrain, data: TkVoxelGeneratorData, to terrainDirectory: URL) throws -> URL {
+    public func write(terrain: Terrain, data: TkVoxelGeneratorData, to terrainDirectory: URL) throws -> URL {
         
         let dir = terrainDirectory.appendingPathComponent(terrain.limit.rawValue, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -99,12 +101,12 @@ actor FileLoader {
     }
 }
 
-enum TerrainLimitsMergerError: Error, CustomStringConvertible {
+public enum TerrainLimitsMergerError: Error, CustomStringConvertible {
     case noFilesLoaded(kind: String)
     case missingPreset(TerrainPreset)
     case writeFailed(URL, any Error)
 
-    var description: String {
+    public var description: String {
         switch self {
         case .noFilesLoaded(let kind):
             return "No \(kind) terrain limit files could be loaded."

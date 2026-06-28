@@ -1,7 +1,7 @@
 import Foundation
 
-struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
-    enum Kind: String, Codable, CaseIterable, Sendable {
+public struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
+    public enum Kind: String, Codable, CaseIterable, Sendable {
         case alien
         case alpine
         case caverns
@@ -14,7 +14,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         case mountainRavines
         case waterworld
         
-        var displayName: String {
+        public var displayName: String {
             switch self {
             case .alien: "Alien"
             case .alpine: "Alpine"
@@ -30,7 +30,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
             }
         }
 
-        var filePrefix: String {
+        public var filePrefix: String {
             switch self {
             case .alien: "Alien"
             case .alpine: "Alpine"
@@ -47,7 +47,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         }
     }
     
-    var order: Int {
+    public var order: Int {
         switch (kind, category) {
             case (.floatingIslands, .standard): 0
             case (.grandCanyon,     .standard): 1
@@ -85,12 +85,17 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
-    var kind: Kind
-    var category: Terrain.Category
+    public var kind: Kind
+    public var category: Terrain.Category
 
-    var id: String { fileBaseName }
+    public init(kind: Kind, category: Terrain.Category) {
+        self.kind = kind
+        self.category = category
+    }
 
-    var fileBaseName: String {
+    public var id: String { fileBaseName }
+
+    public var fileBaseName: String {
         switch category {
         case .standard: kind.filePrefix
         case .prime: kind.filePrefix + Terrain.Category.prime.rawValue
@@ -98,10 +103,10 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
-    var minFileName: String { "\(fileBaseName)_Min.xml" }
-    var maxFileName: String { "\(fileBaseName)_Max.xml" }
+    public var minFileName: String { "\(fileBaseName)_Min.xml" }
+    public var maxFileName: String { "\(fileBaseName)_Max.xml" }
 
-    var displayName: String {
+    public var displayName: String {
         switch category {
         case .standard: kind.displayName
         case .prime: "\(kind.displayName) Prime"
@@ -109,8 +114,8 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
-    var minTerrain: Terrain { terrain(limit: .min) }
-    var maxTerrain: Terrain { terrain(limit: .max) }
+    public var minTerrain: Terrain { terrain(limit: .min) }
+    public var maxTerrain: Terrain { terrain(limit: .max) }
 
     private func terrain(limit: Terrain.Limit) -> Terrain {
         switch kind {
@@ -128,7 +133,7 @@ struct TerrainPreset: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
-    static var all: [TerrainPreset] {
+    public static var all: [TerrainPreset] {
         Kind.allCases.flatMap { kind in
             guard kind != .waterworld else { return [TerrainPreset(kind: kind, category: .prime)]}
             return [Terrain.Category.standard, .prime, .purple]

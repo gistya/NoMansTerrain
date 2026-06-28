@@ -1,3 +1,4 @@
+@preconcurrency import NoMansTerrainCore
 //
 //  Item.swift
 //  Nah Bruh's Terrain

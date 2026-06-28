@@ -2,7 +2,7 @@ import Foundation
 
 /// Types that carry one or more layer `active` flags which can be preserved across a
 /// bulk mutation (Set Min/Max, Randomize) when the user has "Lock active" enabled.
-protocol ActivePreserving {
+public protocol ActivePreserving {
     /// Returns a copy of `self` with every `active` flag taken from `previous`.
     func preservingActive(from previous: Self) -> Self
 }
@@ -10,7 +10,7 @@ protocol ActivePreserving {
 // MARK: - Leaf layers
 
 extension TkNoiseUberLayerData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self {
+    public func preservingActive(from previous: Self) -> Self {
         var copy = self
         copy.active = previous.active
         return copy
@@ -18,7 +18,7 @@ extension TkNoiseUberLayerData: ActivePreserving {
 }
 
 extension TkNoiseGridData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self {
+    public func preservingActive(from previous: Self) -> Self {
         var copy = self
         copy.active = previous.active
         copy.turbulenceNoiseLayer = copy.turbulenceNoiseLayer.preservingActive(from: previous.turbulenceNoiseLayer)
@@ -27,7 +27,7 @@ extension TkNoiseGridData: ActivePreserving {
 }
 
 extension TkNoiseFeatureData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self {
+    public func preservingActive(from previous: Self) -> Self {
         var copy = self
         copy.active = previous.active
         return copy
@@ -35,7 +35,7 @@ extension TkNoiseFeatureData: ActivePreserving {
 }
 
 extension TkNoiseCaveData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self {
+    public func preservingActive(from previous: Self) -> Self {
         var copy = self
         copy.mouth = copy.mouth.preservingActive(from: previous.mouth)
         copy.tunnel = copy.tunnel.preservingActive(from: previous.tunnel)
@@ -45,19 +45,19 @@ extension TkNoiseCaveData: ActivePreserving {
 
 // Types without an `active` flag: preserving is a no-op.
 extension TkNoiseUberData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self { self }
+    public func preservingActive(from previous: Self) -> Self { self }
 }
 extension TkNoiseSuperFormulaData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self { self }
+    public func preservingActive(from previous: Self) -> Self { self }
 }
 extension TkNoiseSuperPrimitiveData: ActivePreserving {
-    func preservingActive(from previous: Self) -> Self { self }
+    public func preservingActive(from previous: Self) -> Self { self }
 }
 
 // MARK: - Aggregates
 
 extension NoiseLayers: ActivePreserving {
-    func preservingActive(from previous: NoiseLayers) -> NoiseLayers {
+    public func preservingActive(from previous: NoiseLayers) -> NoiseLayers {
         var copy = self
         let keyPaths: [WritableKeyPath<NoiseLayers, TkNoiseUberLayerData>] = [
             \.base, \.hill, \.mountain, \.rock, \.underWater, \.texture, \.elevation, \.continent
@@ -70,7 +70,7 @@ extension NoiseLayers: ActivePreserving {
 }
 
 extension GridLayers: ActivePreserving {
-    func preservingActive(from previous: GridLayers) -> GridLayers {
+    public func preservingActive(from previous: GridLayers) -> GridLayers {
         var copy = self
         let keyPaths: [WritableKeyPath<GridLayers, TkNoiseGridData>] = [
             \.small, \.large,
@@ -85,7 +85,7 @@ extension GridLayers: ActivePreserving {
 }
 
 extension Features: ActivePreserving {
-    func preservingActive(from previous: Features) -> Features {
+    public func preservingActive(from previous: Features) -> Features {
         var copy = self
         let keyPaths: [WritableKeyPath<Features, TkNoiseFeatureData>] = [
             \.river, \.crater, \.arches, \.archesSmall, \.blobs, \.blobsSmall, \.substance
@@ -98,7 +98,7 @@ extension Features: ActivePreserving {
 }
 
 extension Caves: ActivePreserving {
-    func preservingActive(from previous: Caves) -> Caves {
+    public func preservingActive(from previous: Caves) -> Caves {
         var copy = self
         copy.underground = copy.underground.preservingActive(from: previous.underground)
         return copy
@@ -106,7 +106,7 @@ extension Caves: ActivePreserving {
 }
 
 extension TkVoxelGeneratorData: ActivePreserving {
-    func preservingActive(from previous: TkVoxelGeneratorData) -> TkVoxelGeneratorData {
+    public func preservingActive(from previous: TkVoxelGeneratorData) -> TkVoxelGeneratorData {
         var copy = self
         copy.noiseLayers = copy.noiseLayers.preservingActive(from: previous.noiseLayers)
         copy.gridLayers = copy.gridLayers.preservingActive(from: previous.gridLayers)

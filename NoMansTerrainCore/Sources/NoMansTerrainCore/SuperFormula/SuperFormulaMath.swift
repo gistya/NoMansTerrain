@@ -1,9 +1,9 @@
 import Foundation
 import simd
 
-enum SuperFormulaMath {
+public enum SuperFormulaMath {
     /// Gielis superformula radius for angle `angle` (radians).
-    static func radius(
+    public static func radius(
         angle: Double,
         m: Double,
         n1: Double,
@@ -23,7 +23,7 @@ enum SuperFormulaMath {
 
     /// Spherical 3D superformula using two NMS formula parameter sets. (SuperPrimitive is
     /// a separate thing in-game and is intentionally not combined with the superformula.)
-    static func sample(
+    public static func sample(
         theta: Double,
         phi: Double,
         formula1: TkNoiseSuperFormulaData,
