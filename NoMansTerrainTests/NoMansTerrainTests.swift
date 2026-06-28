@@ -242,6 +242,50 @@ struct NoMansTerrainTests {
         #expect(Foundation.XMLParser(data: Data(xml.utf8)).parse(), "Insane combined file should be well-formed XML")
     }
 
+    // MARK: - Region mask editor
+
+    @Test
+    func regionMaskCoverageApproximatesRatio() {
+        let layer = RegionLayerState(id: "t", name: "T", colorIndex: 0, active: true,
+                                     ratio: 0.35, scale: 6, gain: 2, hasGain: true, elevation: 0)
+        let res = 64
+        var covered = 0
+        for j in 0..<res {
+            for i in 0..<res {
+                let x = Double(i) / Double(res) * RegionMask.worldSpan
+                let y = Double(j) / Double(res) * RegionMask.worldSpan
+                if RegionMask.mask(layer, x: x, y: y) > 0.5 { covered += 1 }
+            }
+        }
+        let frac = Double(covered) / Double(res * res)
+        #expect(abs(frac - 0.35) < 0.12, "Mask coverage \(frac) should be near the ratio 0.35")
+    }
+
+    @Test
+    func regionAutoTierMakesEveryActiveLayerVisible() {
+        let layers = (0..<8).map { i in
+            RegionLayerState(id: "L\(i)", name: "L\(i)", colorIndex: i, active: true,
+                             ratio: 0.9, scale: 5, gain: 2, hasGain: true, elevation: 0)
+        }
+        let tiered = RegionFieldSampler.autoTier(layers)
+        let field = RegionFieldSampler.sample(layers: tiered, resolution: 40)
+        for layer in tiered where layer.active {
+            #expect((field.winCounts[layer.id] ?? 0) > 0, "\(layer.id) should win some cells after auto-tier")
+        }
+    }
+
+    @Test
+    func regionFieldIsDeterministic() {
+        let layers = (0..<5).map { i in
+            RegionLayerState(id: "L\(i)", name: "L\(i)", colorIndex: i, active: true,
+                             ratio: 0.3 + 0.1 * Double(i), scale: Double(2 + i * 3), gain: 2,
+                             hasGain: true, elevation: Double(i) * 10)
+        }
+        let a = RegionFieldSampler.sample(layers: layers, resolution: 24)
+        let b = RegionFieldSampler.sample(layers: layers, resolution: 24)
+        #expect(a.winCounts == b.winCounts)
+    }
+
     @Test
     func presetListExposesOnlyWaterWorldPrime() {
         let waterWorld = TerrainPreset.all.filter { $0.kind == .waterworld }

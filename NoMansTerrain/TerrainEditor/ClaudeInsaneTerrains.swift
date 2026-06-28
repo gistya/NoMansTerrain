@@ -26,9 +26,9 @@ enum ClaudeInsaneTerrains {
     /// Global spikiness dial, 0…1. At `1.0` the set is maximally unhinged; lower values pull
     /// the most aggressive drivers back toward documented-safe so spikes stay thicker than
     /// the voxel grid can mesh (very thin, high-frequency spikes tear holes in the terrain).
-    /// Tuned to 0.7 after in-game gaps showed up at full tilt. Change this one number to
-    /// dial the whole set hotter or tamer.
-    static let intensity = 0.7
+    /// Dropped to 0.4 after gaps + dense over-tessellated patches persisted at 0.55. Change
+    /// this one number to dial the whole set hotter or tamer.
+    static let intensity = 0.4
 
     /// Interpolates from a tame value (used as `intensity` → 0) to a wild value (`intensity`
     /// → 1). Used on the handful of fields that drive sub-voxel spike thinness.
@@ -136,7 +136,7 @@ enum ClaudeInsaneTerrains {
         // sub-voxel thinness — so these get pulled back the hardest.
         setPair(&a, &b, \.noiseData.lacunarity, 2.0, hot(2.3, 3.2), &rng)     // doc max 2.2
         setPair(&a, &b, \.noiseData.gain, 0.5, hot(0.65, 0.88), &rng)         // doc max 0.6
-        setPairInt(&a, &b, \.noiseData.octaves, 7, intensity > 0.85 ? 10 : 9, &rng) // cap (perf + detail)
+        setPairInt(&a, &b, \.noiseData.octaves, 7, intensity > 0.85 ? 10 : (intensity > 0.5 ? 9 : 8), &rng) // cap (perf + detail)
         setPair(&a, &b, \.noiseData.remapFromMin, -1.5, 0.2, &rng)
         setPair(&a, &b, \.noiseData.remapFromMax, 0.4, 1.8, &rng)
         setPair(&a, &b, \.noiseData.remapToMin, -1.5, 0.0, &rng)
@@ -217,7 +217,9 @@ enum ClaudeInsaneTerrains {
         setPair(&a, &b, \.varyPitch, 0, spec.twist, &rng)
         setPair(&a, &b, \.varyRoll, 0, spec.twist, &rng)
 
-        setPair(&a, &b, \.regionRatio, resource ? 0.2 : 0.55, resource ? 0.5 : 1.0, &rng)
+        // Coverage scales with intensity — lower = sparser shapes, less overlapping geometry
+        // (dense overlap is what over-tessellates into raw-grid patches).
+        setPair(&a, &b, \.regionRatio, resource ? 0.15 : 0.45, resource ? hot(0.35, 0.5) : hot(0.7, 1.0), &rng)
         setPair(&a, &b, \.regionScale, 1.0, resource ? 6 : 14, &rng)
         setPair(&a, &b, \.smoothRadius, spec.theme.isBlobby ? 10 : 0, spec.theme.isBlobby ? 40 : 4, &rng)
 

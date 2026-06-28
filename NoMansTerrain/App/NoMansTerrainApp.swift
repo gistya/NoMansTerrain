@@ -22,6 +22,9 @@ struct NoMansTerrainApp: App {
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 1200, height: 800)
+        #if os(macOS)
+        .windowResizability(.contentMinSize)
+        #endif
     }
 
     private static func makeContainer() -> ModelContainer {

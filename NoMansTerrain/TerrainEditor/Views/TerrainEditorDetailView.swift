@@ -123,7 +123,7 @@ struct TerrainEditorDetailView: View {
     @AppStorage("terrainLockLODMax") private var lockLODMax = false
 
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
-        case general, noiseLayers, gridLayers, features, caves
+        case general, noiseLayers, gridLayers, features, caves, regions
 
         var id: String { rawValue }
 
@@ -134,6 +134,7 @@ struct TerrainEditorDetailView: View {
             case .gridLayers: "Grid"
             case .features: "Features"
             case .caves: "Caves"
+            case .regions: "Regions"
             }
         }
     }
@@ -296,6 +297,8 @@ struct TerrainEditorDetailView: View {
                 globalMin: globalMin.caves,
                 globalMax: globalMax.caves
             )
+        case .regions:
+            RegionMaskEditorView(session: session)
         }
     }
 
