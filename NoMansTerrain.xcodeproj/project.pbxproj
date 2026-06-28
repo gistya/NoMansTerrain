@@ -31,6 +31,7 @@
 
 /* Begin PBXFileReference section */
 		7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NoMansTerrain.xctestplan; sourceTree = "<group>"; };
+		730938AD2FF1A805001BCBFC /* NoMansTerrainCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = NoMansTerrainCore; sourceTree = "<group>"; };
 		7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoMansTerrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -114,6 +115,7 @@
 		7385C4F42FE03E28005780E2 = {
 			isa = PBXGroup;
 			children = (
+				730938AD2FF1A805001BCBFC /* NoMansTerrainCore */,
 				7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */,
 				737C9D0A2FE09FF20041405F /* nms_terrain */,
 				7385C6332FE03E89005780E2 /* hastings */,
