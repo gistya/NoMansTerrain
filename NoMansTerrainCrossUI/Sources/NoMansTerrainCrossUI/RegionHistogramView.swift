@@ -1,32 +1,42 @@
 import NoMansTerrainCore
 import SwiftCrossUI
 
-// The region histogram is a graphics-heavy, frequently-redrawn view. The portable
-// "rasterize to an RGBA Image" path is too slow to scrub interactively, so we embed a
-// *native* drawing surface per platform via SwiftCrossUI's backend representables.
-//
+// The region histogram is a graphics-heavy, frequently-redrawn view embedded as a *native*
+// drawing surface per platform via SwiftCrossUI's backend representables:
 //   macOS  → NSViewRepresentable + Core Graphics  (implemented & fast — the reference)
 //   Windows → WinUIElementRepresentable + Win2D/Direct3D  (TODO: needs a Windows box)
 //   Linux/other → RGBA image fallback (works, slower)
+//
+// ⚠️ SwiftCrossUI gotcha: representables only store the representable value at init —
+// `updateNSView`/`updateWinUIElement` are called every render but with the ORIGINAL value
+// (computeLayout never reassigns it). So a representable's stored props are FROZEN. We work
+// around it by passing data through this reference box, whose contents the app refreshes
+// each render; the (frozen) representable still holds the same box, so update reads fresh
+// data. The Windows representable will need the identical pattern.
+
+/// Reference holder so fresh field data reaches a frozen representable.
+final class RegionFieldBox {
+    var field: RegionField?
+    init() {}
+}
 
 #if canImport(AppKitBackend)
 import AppKit
 import AppKitBackend
 
 /// macOS native histogram: embeds an `NSView` that draws the isometric bars with Core
-/// Graphics. Only this view repaints on change (no per-frame bitmap upload), so slider
-/// scrubbing stays smooth.
+/// Graphics. Only this view repaints on change (no per-frame bitmap upload).
 struct RegionHistogramView: NSViewRepresentable {
-    var field: RegionField
+    let box: RegionFieldBox
 
     func makeNSView(context: Context) -> RegionHistogramNSView {
         let view = RegionHistogramNSView()
-        view.field = field
+        view.field = box.field
         return view
     }
 
     func updateNSView(_ nsView: RegionHistogramNSView, context: Context) {
-        nsView.field = field
+        nsView.field = box.field // box is shared/current even though `self` is frozen
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: RegionHistogramNSView, context: Context) -> ViewSize {
@@ -85,12 +95,12 @@ final class RegionHistogramNSView: NSView {
             let z = max(cell.height, 0.02)
             let di = Double(i), dj = Double(j)
             fillQuad([project(di + 1, dj, z), project(di + 1, dj + 1, z),
-                      project(di + 1, dj + 1, 0), project(di + 1, dj, 0)], base, 0.74)        // right
+                      project(di + 1, dj + 1, 0), project(di + 1, dj, 0)], base, 0.74)
             fillQuad([project(di, dj + 1, z), project(di + 1, dj + 1, z),
-                      project(di + 1, dj + 1, 0), project(di, dj + 1, 0)], base, 0.55)        // left
+                      project(di + 1, dj + 1, 0), project(di, dj + 1, 0)], base, 0.55)
             fillQuad([project(di, dj, z), project(di + 1, dj, z),
                       project(di + 1, dj + 1, z), project(di, dj + 1, z)],
-                     base, 0.6 + 0.4 * min(max(cell.height, 0), 1))                            // top
+                     base, 0.6 + 0.4 * min(max(cell.height, 0), 1))
         }
     }
 }
@@ -98,16 +108,20 @@ final class RegionHistogramNSView: NSView {
 #else
 import ImageFormats
 
-/// Portable fallback (Linux/Gtk now; Windows until a Win2D `WinUIElementRepresentable`
-/// lands): software-rasterized RGBA image. Correct but slow to scrub — see the macOS
-/// implementation above for the native pattern to mirror.
+/// Portable fallback (Linux now; Windows until a Win2D representable lands). A normal View,
+/// so its body re-runs each render and stays current — but software-rasterized and slow.
 struct RegionHistogramView: View {
-    var field: RegionField
+    let box: RegionFieldBox
 
+    @ViewBuilder
     var body: some View {
-        let raster = RegionHistogramRaster.render(field: field, width: 360, height: 360)
-        return Image(ImageFormats.Image<RGBA>(width: raster.width, height: raster.height, bytes: raster.bytes))
-            .resizable()
+        if let field = box.field {
+            let raster = RegionHistogramRaster.render(field: field, width: 360, height: 360)
+            Image(ImageFormats.Image<RGBA>(width: raster.width, height: raster.height, bytes: raster.bytes))
+                .resizable()
+        } else {
+            Color(red: 18 / 255, green: 20 / 255, blue: 28 / 255)
+        }
     }
 }
 #endif

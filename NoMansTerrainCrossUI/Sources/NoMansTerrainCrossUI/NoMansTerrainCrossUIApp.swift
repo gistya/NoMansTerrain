@@ -21,6 +21,9 @@ struct NoMansTerrainCrossUIApp: App {
     @State var gridMin = makeGridLayers()
     @State var gridMax = makeGridLayers()
 
+    /// Shared holder feeding the (frozen) histogram representable — see RegionHistogramView.
+    @State private var fieldBox = RegionFieldBox()
+
     private let resolution = 24
 
     private var activeLayers: [RegionLayerState] {
@@ -48,12 +51,20 @@ struct NoMansTerrainCrossUIApp: App {
         )
     }
 
-    private var field: RegionField {
-        RegionFieldSampler.sample(layers: activeLayers, resolution: resolution)
+    /// Samples the field once per render and stashes it in the shared box, so the histogram
+    /// representable (whose stored props SwiftCrossUI freezes at init) reads the current
+    /// value in `updateNSView`.
+    private func currentField() -> RegionField {
+        let f = RegionFieldSampler.sample(layers: activeLayers, resolution: resolution)
+        fieldBox.field = f
+        return f
     }
 
     var body: some Scene {
         WindowGroup("NoMansTerrain — Region Mixer (Cross-Platform Spike)") {
+            // Sample the field ONCE per render and thread it through — it was previously a
+            // computed property re-sampled ~19×/frame (histogram + every legend/row pct()).
+            let field = currentField()
             HStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 10) {
                     toggles
@@ -61,7 +72,7 @@ struct NoMansTerrainCrossUIApp: App {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
                             ForEach(Array(0..<activeLayers.count), id: \.self) { i in
-                                layerRow(i)
+                                layerRow(i, field: field)
                             }
                         }
                     }
@@ -70,8 +81,8 @@ struct NoMansTerrainCrossUIApp: App {
 
                 VStack(spacing: 10) {
                     Text("Surface preview — which layer wins (3D, native)")
-                    RegionHistogramView(field: field).frame(width: 360, height: 360)
-                    legend
+                    RegionHistogramView(box: fieldBox).frame(width: 360, height: 360)
+                    legend(field: field)
                 }
             }
             .padding(20)
@@ -92,10 +103,10 @@ struct NoMansTerrainCrossUIApp: App {
     }
 
     @ViewBuilder
-    private func layerRow(_ i: Int) -> some View {
+    private func layerRow(_ i: Int, field: RegionField) -> some View {
         let layer = activeLayers[i]
         VStack(alignment: .leading, spacing: 2) {
-            Text("\(layer.name) — \(pct(layer.id))% visible")
+            Text("\(layer.name) — \(pct(layer.id, field: field))% visible")
             slider("coverage", bind(i, \.ratio), 0...1)
             slider("patch", bind(i, \.scale), 0.95...19.95)
             slider("height", bind(i, \.elevation), -128...128)
@@ -112,15 +123,15 @@ struct NoMansTerrainCrossUIApp: App {
         }
     }
 
-    private var legend: some View {
+    private func legend(field: RegionField) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(activeLayers, id: \.id) { layer in
-                Text("\(layer.name): \(pct(layer.id))%")
+                Text("\(layer.name): \(pct(layer.id, field: field))%")
             }
         }
     }
 
-    private func pct(_ id: String) -> Int {
+    private func pct(_ id: String, field: RegionField) -> Int {
         let total = resolution * resolution
         return Int(Double(field.winCounts[id] ?? 0) / Double(total) * 100)
     }
