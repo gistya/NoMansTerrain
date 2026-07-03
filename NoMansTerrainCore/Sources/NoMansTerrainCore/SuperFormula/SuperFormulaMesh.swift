@@ -1,3 +1,6 @@
+// Apple-only: uses `simd`. The SuperFormula editor is macOS-only, so this compiles to
+// nothing off Apple platforms.
+#if canImport(simd)
 import Foundation
 import simd
 
@@ -98,3 +101,4 @@ public struct SuperFormulaMesh {
         return facing < 0 ? -normal : normal
     }
 }
+#endif

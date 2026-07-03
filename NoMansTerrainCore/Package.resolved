@@ -1,0 +1,15 @@
+{
+  "originHash" : "04a4b6c6fd70bd094d7a3a289a6afc719599eaa5852c5b7d69cb94050ee6fd35",
+  "pins" : [
+    {
+      "identity" : "viceroy",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gistya/viceroy.git",
+      "state" : {
+        "revision" : "d85168048c0e844dd96e747522a36299a87b7642",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}

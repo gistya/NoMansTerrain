@@ -1,3 +1,6 @@
+// Apple-only: uses `simd`, which isn't available on Windows/Linux. The SuperFormula editor
+// is a macOS-only feature, so this compiles to nothing off Apple platforms.
+#if canImport(simd)
 import Foundation
 import simd
 
@@ -55,3 +58,4 @@ public enum SuperFormulaMath {
         return SIMD3<Float>(Float(position.x), Float(position.y), Float(position.z))
     }
 }
+#endif
