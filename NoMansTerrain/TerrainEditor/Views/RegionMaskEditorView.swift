@@ -24,6 +24,10 @@ struct RegionLayerDesc: Identifiable {
     let scale: WritableKeyPath<TkVoxelGeneratorData, Double>
     let gain: WritableKeyPath<TkVoxelGeneratorData, Double>?   // nil for grids
     let elevation: WritableKeyPath<TkVoxelGeneratorData, Double>
+    /// Native range of the `scale` field: 0.95…19.95 for noise/grid (RegionScale), but
+    /// 10…4000 for features/caves (RegionSize). The square editor drags in these units; the
+    /// preview sampler remaps them onto a common domain so the histogram stays meaningful.
+    var scaleRange: ClosedRange<Double> = RegionMaskEditorView.canonicalScaleRange
 }
 
 /// Region-mask authoring surface: a square per noise/grid layer (drag to set patch size &
@@ -33,7 +37,7 @@ struct RegionMaskEditorView: View {
     @Bindable var session: TerrainEditorSession
 
     enum Sub: String, CaseIterable, Identifiable {
-        case noise = "Noise Layers", grid = "Grid Layers"
+        case noise = "Noise Layers", grid = "Grid Layers", features = "Features", caves = "Caves"
         var id: String { rawValue }
     }
     @State private var sub: Sub = .noise
@@ -41,8 +45,24 @@ struct RegionMaskEditorView: View {
 
     private let resolution = 18
 
+    /// Common patch-size domain the preview sampler and Auto-Tier work in. Noise/grid store
+    /// their RegionScale directly in this range; features/caves are remapped onto it.
+    static let canonicalScaleRange: ClosedRange<Double> = 0.95...19.95
+
     private var descriptors: [RegionLayerDesc] {
-        sub == .noise ? Self.noiseDescriptors : Self.gridDescriptors
+        switch sub {
+        case .noise: Self.noiseDescriptors
+        case .grid: Self.gridDescriptors
+        case .features: Self.featureDescriptors
+        case .caves: Self.caveDescriptors
+        }
+    }
+
+    /// Linearly remaps `v` from one range to another, clamping to `dst`.
+    static func remap(_ v: Double, from src: ClosedRange<Double>, to dst: ClosedRange<Double>) -> Double {
+        guard src.upperBound > src.lowerBound else { return dst.lowerBound }
+        let t = min(max((v - src.lowerBound) / (src.upperBound - src.lowerBound), 0), 1)
+        return dst.lowerBound + t * (dst.upperBound - dst.lowerBound)
     }
 
     private var data: TkVoxelGeneratorData { showMax ? session.maxData : session.minData }
@@ -53,7 +73,7 @@ struct RegionMaskEditorView: View {
                 id: d.id, name: d.name, colorIndex: d.colorIndex,
                 active: data[keyPath: d.active],
                 ratio: data[keyPath: d.ratio],
-                scale: data[keyPath: d.scale],
+                scale: Self.remap(data[keyPath: d.scale], from: d.scaleRange, to: Self.canonicalScaleRange),
                 gain: d.gain.map { data[keyPath: $0] } ?? 2,
                 hasGain: d.gain != nil,
                 elevation: data[keyPath: d.elevation]
@@ -87,6 +107,7 @@ struct RegionMaskEditorView: View {
                             active: bindBool(desc.active),
                             ratio: bindDouble(desc.ratio),
                             scale: bindDouble(desc.scale),
+                            scaleRange: desc.scaleRange,
                             elevation: bindDouble(desc.elevation),
                             gain: desc.gain.map { bindDouble($0) }
                         )
@@ -104,7 +125,7 @@ struct RegionMaskEditorView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(maxWidth: 280)
+            .frame(maxWidth: 380)
 
             Spacer()
 
@@ -121,7 +142,7 @@ struct RegionMaskEditorView: View {
             } label: {
                 Label("Auto-Tier", systemImage: "square.3.layers.3d")
             }
-            .help("Spread the active \(sub == .noise ? "noise" : "grid") layers across distinct coverage, patch-size and elevation tiers so each is likely to be visible.")
+            .help("Spread the active \(sub.rawValue.lowercased()) across distinct coverage, patch-size and elevation tiers so each is likely to be visible.")
         }
         .padding(.horizontal)
         .padding(.top, 8)
@@ -190,7 +211,7 @@ struct RegionMaskEditorView: View {
         let tiered = RegionFieldSampler.autoTier(states)
         for (desc, s) in zip(descriptors, tiered) where s.active {
             d[keyPath: desc.ratio] = s.ratio
-            d[keyPath: desc.scale] = s.scale
+            d[keyPath: desc.scale] = Self.remap(s.scale, from: Self.canonicalScaleRange, to: desc.scaleRange)
             d[keyPath: desc.elevation] = s.elevation
             if let g = desc.gain { d[keyPath: g] = s.gain }
         }
@@ -271,6 +292,60 @@ extension RegionMaskEditorView {
             )
         }
     }()
+
+    /// Feature layers (rivers, craters, arches, blobs, substance). Unlike noise/grid these use
+    /// `Ratio`/`RegionSize`/`HeightOffset` and have no RegionGain, so `scaleRange` is 10…4000.
+    static let featureDescriptors: [RegionLayerDesc] = {
+        let layers: [(String, WritableKeyPath<Features, TkNoiseFeatureData>)] = [
+            ("River", \.river), ("Crater", \.crater), ("Arches", \.arches),
+            ("Arches Small", \.archesSmall), ("Blobs", \.blobs), ("Blobs Small", \.blobsSmall),
+            ("Substance", \.substance)
+        ]
+        return layers.enumerated().map { index, entry in
+            let (name, lp) = entry
+            func kp<V>(_ leaf: WritableKeyPath<TkNoiseFeatureData, V>) -> WritableKeyPath<TkVoxelGeneratorData, V> {
+                let root: WritableKeyPath<TkVoxelGeneratorData, Features> = \.features
+                let mid: WritableKeyPath<Features, V> = lp.appending(path: leaf)
+                return root.appending(path: mid)
+            }
+            return RegionLayerDesc(
+                id: "feature.\(name)", name: name, colorIndex: 8 + index, // 8…14
+                active: kp(\.active),
+                ratio: kp(\.ratio),
+                scale: kp(\.regionSize),
+                gain: nil, // features have no RegionGain
+                elevation: kp(\.heightOffset),
+                scaleRange: 10...4000
+            )
+        }
+    }()
+
+    /// Cave layers (the two halves of Underground: Mouth and Tunnel), each a `TkNoiseFeatureData`
+    /// reached through `caves.underground`. Same field shape as features.
+    static let caveDescriptors: [RegionLayerDesc] = {
+        let layers: [(String, WritableKeyPath<TkNoiseCaveData, TkNoiseFeatureData>)] = [
+            ("Cave Mouth", \.mouth), ("Cave Tunnel", \.tunnel)
+        ]
+        return layers.enumerated().map { index, entry in
+            let (name, lp) = entry
+            func kp<V>(_ leaf: WritableKeyPath<TkNoiseFeatureData, V>) -> WritableKeyPath<TkVoxelGeneratorData, V> {
+                let caves: WritableKeyPath<TkVoxelGeneratorData, Caves> = \.caves
+                let underground: WritableKeyPath<Caves, TkNoiseCaveData> = \.underground
+                let root: WritableKeyPath<TkVoxelGeneratorData, TkNoiseCaveData> = caves.appending(path: underground)
+                let mid: WritableKeyPath<TkNoiseCaveData, V> = lp.appending(path: leaf)
+                return root.appending(path: mid)
+            }
+            return RegionLayerDesc(
+                id: "cave.\(name)", name: name, colorIndex: 15 + index, // 15…16
+                active: kp(\.active),
+                ratio: kp(\.ratio),
+                scale: kp(\.regionSize),
+                gain: nil, // caves have no RegionGain
+                elevation: kp(\.heightOffset),
+                scaleRange: 10...4000
+            )
+        }
+    }()
 }
 
 // MARK: - Draggable region square
@@ -284,14 +359,15 @@ struct RegionSquareEditor: View {
     @Binding var active: Bool
     @Binding var ratio: Double
     @Binding var scale: Double
+    /// Native units of `scale`: 0.95…19.95 (RegionScale) for noise/grid, 10…4000 (RegionSize)
+    /// for features/caves. The corner drag and the "Patch" readout work in these units.
+    var scaleRange: ClosedRange<Double> = 0.95...19.95
     @Binding var elevation: Double
     var gain: Binding<Double>?
 
     private let box: CGFloat = 132
     private let pad: CGFloat = 8
     private let minSide: CGFloat = 16
-
-    private let scaleRange = 0.95...19.95
 
     private var span: CGFloat { (box - 2 * pad) - minSide }
 

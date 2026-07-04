@@ -1,5 +1,5 @@
 {
-  "originHash" : "5d7b4feb33658acabe303eb9d415e131bb70042038c38fec5e9775281d379b29",
+  "originHash" : "8e4fc3630066ad6347ed6c356485f4b47bcc43221237db9d61bc25565d4f814c",
   "pins" : [
     {
       "identity" : "swift-docc-plugin",
@@ -16,6 +16,15 @@
       "location" : "https://github.com/swiftlang/swift-docc-symbolkit",
       "state" : {
         "revision" : "b45d1f2ed151d057b54504d653e0da5552844e34",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "viceroy",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gistya/viceroy.git",
+      "state" : {
+        "revision" : "d85168048c0e844dd96e747522a36299a87b7642",
         "version" : "1.0.0"
       }
     }
