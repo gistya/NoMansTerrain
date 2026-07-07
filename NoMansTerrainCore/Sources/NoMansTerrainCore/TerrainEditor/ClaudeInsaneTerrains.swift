@@ -298,7 +298,7 @@ public enum ClaudeInsaneTerrains {
 // MARK: - Recipe data
 
 public extension ClaudeInsaneTerrains {
-    public enum Theme: Sendable {
+    enum Theme: Sendable {
         case spires, blobs, terraces, floatingIslands, canyons, lattice, vortex, reef
 
         public var isSpiky: Bool { [.spires, .lattice, .reef, .canyons].contains(self) }
@@ -307,7 +307,7 @@ public extension ClaudeInsaneTerrains {
     }
 
     /// A compact recipe; the engine above expands these dials into hundreds of fields.
-    public struct InsaneSpec: Sendable {
+    struct InsaneSpec: Sendable {
         public let name: String
         public let blurb: String
         public let primaryGrid: NoiseGridType
@@ -321,7 +321,7 @@ public extension ClaudeInsaneTerrains {
     }
 
     /// Exactly 31 — one per game terrain slot (`TerrainPreset.all.count`).
-    public static let specs: [InsaneSpec] = [
+    static let specs: [InsaneSpec] = [
         InsaneSpec(name: "Crystalline Cathedral", blurb: "Towering faceted crystal spires in 6-fold symmetry.",
                    primaryGrid: .superFormula, secondaryGrid: .superFormulaRandom, m: 6, n1: 0.3, n2: 0.3, n3: 0.3,
                    floatAmount: 180, relief: 1.3, twist: 30, theme: .lattice, palette: [.rock, .substance2, .randomRock]),

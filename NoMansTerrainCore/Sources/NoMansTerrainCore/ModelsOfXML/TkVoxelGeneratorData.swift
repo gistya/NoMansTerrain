@@ -1,6 +1,6 @@
 import Foundation
 
-public struct NoiseLayers: Codable, Equatable {
+public struct NoiseLayers: Codable, Equatable, Sendable {
     public var base: TkNoiseUberLayerData
     public var hill: TkNoiseUberLayerData
     public var mountain: TkNoiseUberLayerData
@@ -22,7 +22,7 @@ public struct NoiseLayers: Codable, Equatable {
     }
 }
 
-public struct GridLayers: Codable, Equatable {
+public struct GridLayers: Codable, Equatable, Sendable {
     public var small: TkNoiseGridData
     public var large: TkNoiseGridData
     public var resourcesHeridium: TkNoiseGridData
@@ -46,7 +46,7 @@ public struct GridLayers: Codable, Equatable {
     }
 }
 
-public struct Features: Codable, Equatable {
+public struct Features: Codable, Equatable, Sendable {
     public var river: TkNoiseFeatureData
     public var crater: TkNoiseFeatureData
     public var arches: TkNoiseFeatureData
@@ -66,7 +66,7 @@ public struct Features: Codable, Equatable {
     }
 }
 
-public struct Caves: Codable, Equatable {
+public struct Caves: Codable, Equatable, Sendable {
     public var underground: TkNoiseCaveData
 
     public enum CodingKeys: String, CodingKey {
@@ -75,7 +75,7 @@ public struct Caves: Codable, Equatable {
 }
 
 /// BaseSeed decodes plain integers, `NONE`, or nested `GcSeed` property bags from NMS XML.
-public struct BaseSeed: Codable, Equatable {
+public struct BaseSeed: Codable, Equatable, Sendable {
     public var seed: Int?
 
     public init(seed: Int?) {
@@ -83,7 +83,7 @@ public struct BaseSeed: Codable, Equatable {
     }
 
     public init(from decoder: any Decoder) throws {
-        struct GcSeed: Decodable {
+        struct GcSeed: Decodable, Sendable {
             public var seed: Int
             public enum CodingKeys: String, CodingKey { case seed = "Seed" }
         }
@@ -119,7 +119,7 @@ public struct BaseSeed: Codable, Equatable {
     }
 }
 
-public struct TkVoxelGeneratorData: Codable, Equatable {
+public struct TkVoxelGeneratorData: Codable, Equatable, Sendable {
     public var baseSeed: BaseSeed
     public var seaLevel: Double
     public var beachHeight: Double
@@ -198,7 +198,7 @@ public struct TkVoxelGeneratorData: Codable, Equatable {
 }
 
 /// Root wrapper for Min terrain XML files (e.g. Alien_Min.xml).
-public struct TerrainMinDocument: Codable, Equatable {
+public struct TerrainMinDocument: Codable, Equatable, Sendable {
     public var min: TkVoxelGeneratorData
 
     public enum CodingKeys: String, CodingKey {

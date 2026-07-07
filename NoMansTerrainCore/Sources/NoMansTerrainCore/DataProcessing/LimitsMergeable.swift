@@ -1,4 +1,4 @@
-public protocol LimitsMergeable {
+protocol LimitsMergeable {
     func merged(with other: Self, direction: MergeDirection) -> Self
 }
 
@@ -7,17 +7,17 @@ public enum MergeDirection {
     case maximum
 }
 
-public extension LimitsMergeable {
-    public func merge<T: Comparable>(_ lhs: T, _ rhs: T, direction: MergeDirection) -> T {
+extension LimitsMergeable {
+    func merge<T: Comparable>(_ lhs: T, _ rhs: T, direction: MergeDirection) -> T {
         direction == .minimum ? Swift.min(lhs, rhs) : Swift.max(lhs, rhs)
     }
-    public func mergeBool(_ lhs: Bool, _ rhs: Bool, direction: MergeDirection) -> Bool {
+    func mergeBool(_ lhs: Bool, _ rhs: Bool, direction: MergeDirection) -> Bool {
         direction == .minimum ? (lhs && rhs) : (lhs || rhs)
     }
-    public func mergeString(_ lhs: String, _ rhs: String, direction: MergeDirection) -> String {
+    func mergeString(_ lhs: String, _ rhs: String, direction: MergeDirection) -> String {
         direction == .minimum ? (lhs <= rhs ? lhs : rhs) : (lhs >= rhs ? lhs : rhs)
     }
-    public func mergeOptionalInt(_ lhs: Int?, _ rhs: Int?, direction: MergeDirection) -> Int? {
+    func mergeOptionalInt(_ lhs: Int?, _ rhs: Int?, direction: MergeDirection) -> Int? {
         switch (lhs, rhs) {
         case (nil, nil): return nil
         case (let value?, nil): return value
@@ -25,7 +25,7 @@ public extension LimitsMergeable {
         case (let left?, let right?): return merge(left, right, direction: direction)
         }
     }
-    public func mergeEnum<T: RawRepresentable>(_ lhs: T, _ rhs: T, direction: MergeDirection) -> T
+    func mergeEnum<T: RawRepresentable>(_ lhs: T, _ rhs: T, direction: MergeDirection) -> T
     where T.RawValue: Comparable {
         let left = lhs.rawValue
         let right = rhs.rawValue

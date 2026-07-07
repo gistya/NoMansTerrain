@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TkNoiseSuperPrimitiveData: Codable, Equatable {
+public struct TkNoiseSuperPrimitiveData: Codable, Equatable, Sendable {
     /// 0.0990...1.0
     public var width: Double
     /// 0.0990...1.0

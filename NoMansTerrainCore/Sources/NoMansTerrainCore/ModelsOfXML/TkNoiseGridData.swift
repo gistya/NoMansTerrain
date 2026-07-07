@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TkNoiseGridData: Codable, Equatable {
+public struct TkNoiseGridData: Codable, Equatable, Sendable {
     public var active: Bool
     /// 1...3
     public var maximumLOD: Int

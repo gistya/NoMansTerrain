@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TkNoiseSuperFormulaData: Codable, Equatable {
+public struct TkNoiseSuperFormulaData: Codable, Equatable, Sendable {
     /// 0.0990...9.9990
     public var formM: Double
     /// 0.0...99.90

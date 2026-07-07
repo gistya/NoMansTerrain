@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TkNoiseOffsetEnum: Codable, Equatable {
+public struct TkNoiseOffsetEnum: Codable, Equatable, Sendable {
     public var offsetType: OffsetType
 
     public enum CodingKeys: String, CodingKey {

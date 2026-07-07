@@ -37,7 +37,7 @@ public enum Terrain: CustomStringConvertible, Sendable, Codable {
         case purple   = "Purple"
     }
     
-    public enum Limit: String {
+    public enum Limit: String, Sendable {
         case min = "Min"
         case max = "Max"
     }
@@ -60,9 +60,9 @@ public enum Terrain: CustomStringConvertible, Sendable, Codable {
 }
 
 public extension Terrain {
-    public enum CodingError: Error { case invalid(String) }
+    enum CodingError: Error { case invalid(String) }
 
-    public init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
         guard let value = Terrain(string: raw) else {
             throw CodingError.invalid(raw)
@@ -70,12 +70,12 @@ public extension Terrain {
         self = value
     }
 
-    public func encode(to encoder: any Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(description)
     }
 
-    public init?(string: String) {
+    init?(string: String) {
         // Strip limit suffix
         let limit: Limit
         let body: Substring
