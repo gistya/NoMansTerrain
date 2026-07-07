@@ -11,7 +11,7 @@ struct SectionScopeChoice<Value> {
     let applyAllMax: (inout Value) -> Void
 }
 
-struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
+struct SectionActionBar<Value: ActivePreserving & MaxLODApplying & RegionMixPreserving>: View {
     @Binding var minValue: Value
     @Binding var maxValue: Value
     let applyGlobalMin: (inout Value) -> Void
@@ -24,6 +24,9 @@ struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
     @AppStorage("terrainLockActive") private var lockActive = false
     /// When on, Set Min/Max and Randomize keep every `maximumLOD` pinned to its maximum.
     @AppStorage("terrainLockLODMax") private var lockLODMax = false
+    /// When on, Set Min/Max and Randomize preserve every layer's region-mixing fields
+    /// (coverage / patch size / edge / height offset) so the region mix survives the change.
+    @AppStorage("terrainLockRegionMix") private var lockRegionMix = false
 
     @State private var promptMin = false
     @State private var promptMax = false
@@ -43,6 +46,10 @@ struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
                 if lockActive {
                     minValue = minValue.preservingActive(from: prevMin)
                     maxValue = maxValue.preservingActive(from: prevMax)
+                }
+                if lockRegionMix {
+                    minValue = minValue.preservingRegionMix(from: prevMin)
+                    maxValue = maxValue.preservingRegionMix(from: prevMax)
                 }
                 if lockLODMax {
                     minValue = minValue.applyingMaxLOD()
@@ -78,6 +85,9 @@ struct SectionActionBar<Value: ActivePreserving & MaxLODApplying>: View {
         mutateValue(binding, op)
         if lockActive {
             binding.wrappedValue = binding.wrappedValue.preservingActive(from: previous)
+        }
+        if lockRegionMix {
+            binding.wrappedValue = binding.wrappedValue.preservingRegionMix(from: previous)
         }
         if lockLODMax {
             binding.wrappedValue = binding.wrappedValue.applyingMaxLOD()

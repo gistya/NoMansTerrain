@@ -123,6 +123,10 @@ struct TerrainEditorDetailView: View {
     /// issues). Read independently by every `SectionActionBar` via the same key.
     @AppStorage("terrainLockLODMax") private var lockLODMax = false
 
+    /// When on, Set Min/Max and Randomize preserve the region-mixing fields so a mix set up
+    /// in the Region Mixer survives. Read independently by every `SectionActionBar`.
+    @AppStorage("terrainLockRegionMix") private var lockRegionMix = false
+
     private enum TerrainEditorSection: String, CaseIterable, Identifiable {
         case general, noiseLayers, gridLayers, features, caves, regions
 
@@ -210,6 +214,11 @@ struct TerrainEditorDetailView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .help("When on, every layer's Maximum LOD is pinned to its highest value (lower LOD causes in-game issues). Enabling it raises all LODs now, and Set Min/Max & Randomize keep them maxed.")
+
+            Toggle("Lock region mix", isOn: $lockRegionMix)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("When on, Set Min/Max and Randomize leave every layer's region-mixing fields (coverage, patch size, edge and height offset) untouched, so a mix set up in the Region Mixer survives.")
 
             Toggle("Absolute limits", isOn: $useAbsoluteLimits)
                 .toggleStyle(.switch)

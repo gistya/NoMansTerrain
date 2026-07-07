@@ -37,6 +37,10 @@ struct TerrainEditorRootView: View {
     @State private var genError: String?
     @State private var showGenError = false
 
+    /// When on, the Generate Random Set export (and random slot fills) also apply a balanced
+    /// "smart region mix" to each random terrain. Shared with the folder grid's fill toggle.
+    @AppStorage("terrainSmartMixOnRandom") private var smartMixOnRandom = false
+
     private var filteredSettings: [TerrainSetting] {
         guard !searchText.isEmpty else { return savedSettings }
         return savedSettings.filter {
@@ -204,10 +208,16 @@ struct TerrainEditorRootView: View {
             }
 #if os(macOS)
             ToolbarItem {
-                Button(action: generateRandomSet) {
+                Menu {
+                    Button("Generate Random Set…", systemImage: "dice", action: generateRandomSet)
+                    Divider()
+                    Toggle("Smart region mix", isOn: $smartMixOnRandom)
+                } label: {
                     Label("Generate Random Set…", systemImage: "dice")
+                } primaryAction: {
+                    generateRandomSet()
                 }
-                .help("Create a random Min/Max terrain file for every preset and save them to a folder")
+                .help("Create a random Min/Max terrain file for every preset and save them to a folder. Enable “Smart region mix” to also balance every layer's region coverage.")
                 .disabled(isGenerating)
             }
             ToolbarItem {
@@ -249,7 +259,8 @@ struct TerrainEditorRootView: View {
                 try await TerrainRandomBatch.generateAll(
                     into: directory,
                     globalMin: globalMin,
-                    globalMax: globalMax
+                    globalMax: globalMax,
+                    smartRegionMix: smartMixOnRandom
                 ) { completed, total in
                     genProgress = completed
                     genTotal = total

@@ -47,7 +47,7 @@ struct RegionMaskEditorView: View {
 
     /// Common patch-size domain the preview sampler and Auto-Tier work in. Noise/grid store
     /// their RegionScale directly in this range; features/caves are remapped onto it.
-    static let canonicalScaleRange: ClosedRange<Double> = 0.95...19.95
+    nonisolated static let canonicalScaleRange: ClosedRange<Double> = 0.95...19.95
 
     private var descriptors: [RegionLayerDesc] {
         switch sub {
@@ -143,6 +143,13 @@ struct RegionMaskEditorView: View {
                 Label("Auto-Tier", systemImage: "square.3.layers.3d")
             }
             .help("Spread the active \(sub.rawValue.lowercased()) across distinct coverage, patch-size and elevation tiers so each is likely to be visible.")
+
+            Button {
+                smartMix()
+            } label: {
+                Label("Smart Mix", systemImage: "dice")
+            }
+            .help("Randomized smart region mix across every layer (noise, grid, features and caves, both Min and Max): a balanced smattering of everything with nothing pinned to 100% coverage.")
         }
         .padding(.horizontal)
         .padding(.top, 8)
@@ -217,6 +224,16 @@ struct RegionMaskEditorView: View {
         }
         base.wrappedValue = d
         normalizeRegionRanges()
+    }
+
+    /// Randomized smart region mix across *every* layer (all tabs) and both Min/Max at once.
+    private func smartMix() {
+        var mn = session.minData
+        var mx = session.maxData
+        var rng = SystemRandomNumberGenerator()
+        SmartRegionMix.apply(min: &mn, max: &mx, using: &rng)
+        session.minDataBinding.wrappedValue = mn
+        session.maxDataBinding.wrappedValue = mx
     }
 
     /// Orders every region field so Min ≤ Max (Auto-Tier only rewrites one set, so the other

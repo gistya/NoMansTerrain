@@ -106,6 +106,7 @@ enum TerrainRandomBatch {
         into directory: URL,
         globalMin: TkVoxelGeneratorData,
         globalMax: TkVoxelGeneratorData,
+        smartRegionMix: Bool = false,
         progress: @MainActor @Sendable (_ completed: Int, _ total: Int) -> Void
     ) async throws -> Int {
         let loader = FileLoader()
@@ -124,6 +125,10 @@ enum TerrainRandomBatch {
                 refMin: globalMin,
                 refMax: globalMax
             )
+            if smartRegionMix {
+                var rng = SystemRandomNumberGenerator()
+                SmartRegionMix.apply(min: &minData, max: &maxData, using: &rng)
+            }
             _ = try await loader.write(terrain: preset.minTerrain, data: minData, to: directory)
             _ = try await loader.write(terrain: preset.maxTerrain, data: maxData, to: directory)
             entries.append(.init(name: preset.fileBaseName, min: minData, max: maxData))

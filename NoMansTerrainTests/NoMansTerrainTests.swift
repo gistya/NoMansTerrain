@@ -746,4 +746,78 @@ struct NoMansTerrainTests {
 
         #expect(session.minData.seaLevel != originalSeaLevel)
     }
+
+    // MARK: - Smart region mix
+
+    @Test
+    func smartRegionMixActivatesEveryLayerAndNeverReachesFullCoverage() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        var mn = pair.min
+        var mx = pair.max
+        var rng = SeededGenerator(seed: 0xBADF00D) // deterministic so the test can't flake
+        SmartRegionMix.apply(min: &mn, max: &mx, using: &rng)
+
+        // Every layer the Region Mixer controls is turned on and its coverage sits in a
+        // sane band — never pinned to full (100%) — with Min ≤ Max, on both files.
+        func check(_ active: (Bool, Bool), coverage: (Double, Double), _ label: String) {
+            #expect(active.0 && active.1, "\(label) should be active on both Min and Max")
+            for c in [coverage.0, coverage.1] {
+                #expect(c > 0 && c < 1.0, "\(label) coverage \(c) should be within (0, 1)")
+                #expect(c <= 0.8 + 1e-9, "\(label) coverage \(c) should stay under the 0.8 ceiling")
+            }
+            #expect(coverage.0 <= coverage.1, "\(label) Min coverage should be ≤ Max")
+        }
+
+        for kp in [\NoiseLayers.base, \.mountain, \.underWater, \.continent] {
+            check((mn.noiseLayers[keyPath: kp].active, mx.noiseLayers[keyPath: kp].active),
+                  coverage: (mn.noiseLayers[keyPath: kp].regionRatio, mx.noiseLayers[keyPath: kp].regionRatio),
+                  "noise.\(kp)")
+        }
+        for kp in [\GridLayers.small, \.large, \.resourcesGold] {
+            check((mn.gridLayers[keyPath: kp].active, mx.gridLayers[keyPath: kp].active),
+                  coverage: (mn.gridLayers[keyPath: kp].regionRatio, mx.gridLayers[keyPath: kp].regionRatio),
+                  "grid.\(kp)")
+        }
+        for kp in [\Features.river, \.crater, \.substance] {
+            check((mn.features[keyPath: kp].active, mx.features[keyPath: kp].active),
+                  coverage: (mn.features[keyPath: kp].ratio, mx.features[keyPath: kp].ratio),
+                  "feature.\(kp)")
+        }
+        check((mn.caves.underground.mouth.active, mx.caves.underground.mouth.active),
+              coverage: (mn.caves.underground.mouth.ratio, mx.caves.underground.mouth.ratio), "cave.mouth")
+        check((mn.caves.underground.tunnel.active, mx.caves.underground.tunnel.active),
+              coverage: (mn.caves.underground.tunnel.ratio, mx.caves.underground.tunnel.ratio), "cave.tunnel")
+
+        // Feature patch size (RegionSize) stays in its own native band, not the 0.95…19.95
+        // RegionScale band — proving the feature path isn't confused with noise/grid.
+        #expect(mn.features.river.regionSize >= 10 && mx.features.river.regionSize <= 4000)
+    }
+
+    @Test
+    func lockRegionMixRestoresRegionFieldsButKeepsOtherEdits() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let base = try await fileLoader.loadTerrainPair(preset: preset).min
+
+        // Change one region field and one non-region field on a couple of layers.
+        var modified = base
+        modified.noiseLayers.base.regionRatio = base.noiseLayers.base.regionRatio + 0.15
+        modified.noiseLayers.base.regionGain = base.noiseLayers.base.regionGain + 1.0
+        modified.noiseLayers.base.height = base.noiseLayers.base.height + 5      // non-region
+        modified.features.river.ratio = base.features.river.ratio + 0.1
+        modified.features.river.width = base.features.river.width + 3            // non-region
+
+        let restored = modified.preservingRegionMix(from: base)
+
+        // Region-mixing fields snap back to the base…
+        #expect(restored.noiseLayers.base.regionRatio == base.noiseLayers.base.regionRatio)
+        #expect(restored.noiseLayers.base.regionGain == base.noiseLayers.base.regionGain)
+        #expect(restored.features.river.ratio == base.features.river.ratio)
+        // …while everything else keeps the edit.
+        #expect(restored.noiseLayers.base.height == modified.noiseLayers.base.height)
+        #expect(restored.features.river.width == modified.features.river.width)
+    }
 }
