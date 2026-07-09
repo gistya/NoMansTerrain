@@ -1,3 +1,4 @@
+#if canImport(simd)
 import Foundation
 import simd
 
@@ -55,3 +56,4 @@ public enum SuperFormulaMath {
         return SIMD3<Float>(Float(position.x), Float(position.y), Float(position.z))
     }
 }
+#endif
