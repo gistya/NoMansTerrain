@@ -796,6 +796,51 @@ struct NoMansTerrainTests {
         #expect(mn.features.river.regionSize >= 10 && mx.features.river.regionSize <= 4000)
     }
 
+    // MARK: - Portable JSON store (Windows/Linux SwiftData replacement)
+
+    @Test
+    func portableTerrainStoreRoundTripsTerrainsAndFolders() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nmt-store-\(UUID().uuidString)", isDirectory: true)
+        let store = TerrainStore(directory: dir)
+
+        let terrain = StoredTerrain(name: "Round Trip", preset: preset, min: pair.min, max: pair.max, isCustom: true)
+        var folder = StoredFolder.empty(name: "Set A")
+        folder.updateSlot(0) { $0.link(to: terrain.id) }                                  // linked
+        folder.updateSlot(1) { $0.setSnapshot(min: pair.min, max: pair.max, label: "Snap") } // snapshot
+
+        try store.saveTerrains([terrain])
+        try store.saveFolders([folder])
+
+        // Reload from disk with a fresh store instance.
+        let reloaded = TerrainStore(directory: dir).load()
+        #expect(reloaded.terrains.count == 1)
+        #expect(reloaded.folders.count == 1)
+
+        let t = try #require(reloaded.terrains.first)
+        #expect(t.name == "Round Trip")
+        #expect(t.isCustom)
+        #expect(t.min.seaLevel == pair.min.seaLevel)
+        #expect(t.max.noiseLayers.base.height == pair.max.noiseLayers.base.height)
+
+        let f = try #require(reloaded.folders.first)
+        #expect(f.slots.count == TerrainPreset.all.count)
+        #expect(f.filledCount == 2)
+
+        let linked = f.orderedSlots[0]
+        #expect(linked.isLinked)
+        #expect(linked.resolvedMin(in: reloaded.terrains)?.seaLevel == pair.min.seaLevel)
+        #expect(linked.displayLabel(in: reloaded.terrains) == "Round Trip")
+
+        let snapshot = f.orderedSlots[1]
+        #expect(snapshot.isSnapshot)
+        #expect(snapshot.resolvedMax(in: reloaded.terrains)?.noiseLayers.base.height == pair.max.noiseLayers.base.height)
+    }
+
     @Test
     func lockRegionMixRestoresRegionFieldsButKeepsOtherEdits() async throws {
         let fileLoader = FileLoader()
