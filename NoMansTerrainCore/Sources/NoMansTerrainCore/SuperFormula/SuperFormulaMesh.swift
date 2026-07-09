@@ -1,3 +1,4 @@
+#if canImport(simd)
 import Foundation
 import simd
 
@@ -98,3 +99,4 @@ public struct SuperFormulaMesh {
         return facing < 0 ? -normal : normal
     }
 }
+#endif
