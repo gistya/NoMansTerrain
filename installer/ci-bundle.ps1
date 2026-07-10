@@ -57,9 +57,21 @@ Write-Host "Path length:            $($pathVal.Length)"
 Write-Host "swift resolvable:       $([bool](Get-Command swift -ErrorAction SilentlyContinue))"
 Write-Host "swiftCore.dll on Path:  $(Test-Path (Join-Path $rtDir 'swiftCore.dll'))"
 
+function Show-Disk($label) {
+  Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue |
+    Where-Object { $null -ne $_.Free } |
+    ForEach-Object { Write-Host ("  disk [{0}] {1}: {2:N1} GB free" -f $label, $_.Name, ($_.Free / 1GB)) }
+}
+
+Show-Disk 'before'
 Push-Location $PackageDir
 try {
-  & $SwiftBundler bundle $Product -c release
-  if ($LASTEXITCODE -ne 0) { throw "swift-bundler bundle failed ($LASTEXITCODE)" }
+  # -gnone: don't embed DWARF debug info. Swift release exes are otherwise huge (~375 MB here,
+  # almost all debug info), which overflows the small workspace drive on CI when the exe is
+  # copied into the bundle. This shrinks it to tens of MB. --strip removes leftover symbols.
+  & $SwiftBundler bundle $Product -c release --strip --Xswiftpm=-Xswiftc --Xswiftpm=-gnone
+  $code = $LASTEXITCODE
 }
 finally { Pop-Location }
+Show-Disk 'after'
+if ($code -ne 0) { throw "swift-bundler bundle failed ($code)" }
