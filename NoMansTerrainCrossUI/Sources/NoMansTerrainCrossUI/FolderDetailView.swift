@@ -10,7 +10,8 @@ struct FolderDetailView: View {
     @Binding var folder: StoredFolder
     let terrains: [StoredTerrain]
     let base: SendableTerrain
-    let onExport: (StoredFolder) -> Void
+    /// Loads the tapped slot's terrain into the sidebar library (linked) and selects it.
+    let onEditSlot: (StoredSlot) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -19,14 +20,17 @@ struct FolderDetailView: View {
             Text("\(folder.filledCount) of \(TerrainPreset.all.count) slots filled")
                 .foregroundColor(folder.allFilled ? .green : .gray)
 
-            HStack(spacing: 6) {
-                Button("Fill Empty · Random") { fillRandom(onlyEmpty: true) }
-                Button("Fill All · Random") { fillRandom(onlyEmpty: false) }
-                Button("🎲 Smart Mix All") { smartMixAll() }
-                Button("Clear All") { clearAll() }
+            // Horizontally scrollable so the action row never forces the detail pane wider
+            // than the window (which previously pushed controls off-screen). Export lives in
+            // the app's top toolbar.
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    Button("Fill Empty · Random") { fillRandom(onlyEmpty: true) }
+                    Button("Fill All · Random") { fillRandom(onlyEmpty: false) }
+                    Button("🎲 Smart Mix All") { smartMixAll() }
+                    Button("Clear All") { clearAll() }
+                }
             }
-            Button("⬆ Export voxelgeneratorsettings.MXML") { onExport(folder) }
-                .disabled(!folder.allFilled)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -35,6 +39,7 @@ struct FolderDetailView: View {
                     }
                 }
             }
+            .frame(width: 600)
             Spacer()
         }
         .padding(12)
@@ -42,12 +47,20 @@ struct FolderDetailView: View {
 
     @ViewBuilder
     private func slotRow(_ slot: StoredSlot) -> some View {
+        // No Spacer: at small window sizes a Spacer pushes the trailing buttons off the
+        // right edge. Packing left keeps every control visible.
         HStack(spacing: 6) {
-            Text("\(slot.presetOrder + 1). \(slot.preset?.displayName ?? "Slot")").frame(width: 190)
-            Text(slot.displayLabel(in: terrains)).foregroundColor(slot.isFilled ? .black : .gray)
-            Spacer()
-            Button("Random") { fillSlotRandom(slot.presetOrder) }
-            Button("Clear") { folder.updateSlot(slot.presetOrder) { $0.clear() } }
+            Text("\(slot.presetOrder + 1). \(slot.preset?.displayName ?? "Slot")")
+                .frame(width: 130, alignment: .leading)
+            Button("🎲") { fillSlotRandom(slot.presetOrder) }
+            Button("✕") { folder.updateSlot(slot.presetOrder) { $0.clear() } }
+            if slot.isFilled {
+                // Tap the terrain to load it into the sidebar library as an editable,
+                // linked terrain (🔗 once linked). Also gives the label readable contrast.
+                Button("\(slot.isLinked ? "🔗 " : "✎ ")\(slot.displayLabel(in: terrains))") { onEditSlot(slot) }
+            } else {
+                Text("Empty").foregroundColor(.gray)
+            }
         }
     }
 

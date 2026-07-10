@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The Burn bootstrapper: a single Setup.exe that installs the exact WindowsAppRuntime the app
+  needs (1.5-preview1) and then the app MSI. Built with:
+    wix build Bundle.wxs -ext WixToolset.BootstrapperApplications.wixext \
+      -d RuntimeInstaller=<path-to-WindowsAppRuntimeInstaller.exe> -d AppMsi=App.msi -o NoMansTerrainSetup.exe
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <Bundle
+    Name="NoMansTerrain"
+    Manufacturer="gistya"
+    Version="0.1.0.0"
+    UpgradeCode="BAA30B05-9EBC-4114-A500-8EB9D4784031">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense" LicenseUrl="" />
+    </BootstrapperApplication>
+
+    <Chain>
+      <!-- 1. The exact WindowsAppRuntime 1.5-preview1 the app is framework-dependent on.
+              Idempotent (exits 0 if already present) and Permanent so uninstalling the app
+              never removes the shared runtime. -->
+      <ExePackage
+        DisplayName="Windows App Runtime 1.5"
+        SourceFile="$(RuntimeInstaller)"
+        InstallArguments="--quiet"
+        Permanent="yes"
+        Vital="yes"
+        PerMachine="yes" />
+
+      <!-- 2. The app itself. -->
+      <MsiPackage SourceFile="$(AppMsi)" Visible="no" />
+    </Chain>
+  </Bundle>
+</Wix>

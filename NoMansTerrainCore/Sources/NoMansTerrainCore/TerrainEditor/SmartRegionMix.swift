@@ -71,7 +71,7 @@ public enum SmartRegionMix {
         pair(&a.regionRatio, &b.regionRatio, center: cover, spread: 0.08, clamp: clampRatio, rng: &rng)
         pair(&a.regionScale, &b.regionScale, center: Double.random(in: 2.5...13, using: &rng), spread: 2, clamp: clampScale, rng: &rng)
         pair(&a.regionGain, &b.regionGain, center: Double.random(in: 1.5...4.5, using: &rng), spread: 1, clamp: clampGain, rng: &rng)
-        pair(&a.heightOffset, &b.heightOffset, center: heightCenter(t, rng: &rng), spread: 10, clamp: clampHeight, rng: &rng)
+        heightPair(&a.heightOffset, &b.heightOffset, rng: &rng)
     }
 
     private static func mixGrid<R: RandomNumberGenerator>(
@@ -81,7 +81,7 @@ public enum SmartRegionMix {
         let cover = lerp(coverage.1, coverage.0, t)
         pair(&a.regionRatio, &b.regionRatio, center: cover, spread: 0.06, clamp: clampRatio, rng: &rng)
         pair(&a.regionScale, &b.regionScale, center: Double.random(in: 2...12, using: &rng), spread: 2, clamp: clampScale, rng: &rng)
-        pair(&a.heightOffset, &b.heightOffset, center: heightCenter(t, rng: &rng), spread: 10, clamp: clampHeight, rng: &rng)
+        heightPair(&a.heightOffset, &b.heightOffset, rng: &rng)
     }
 
     private static func mixFeature<R: RandomNumberGenerator>(
@@ -91,7 +91,7 @@ public enum SmartRegionMix {
         let cover = lerp(coverage.1, coverage.0, t)
         pair(&a.ratio, &b.ratio, center: cover, spread: 0.07, clamp: clampRatio, rng: &rng)
         pair(&a.regionSize, &b.regionSize, center: Double.random(in: 150...2200, using: &rng), spread: 250, clamp: clampSize, rng: &rng)
-        pair(&a.heightOffset, &b.heightOffset, center: heightCenter(t, rng: &rng), spread: 12, clamp: clampHeight, rng: &rng)
+        heightPair(&a.heightOffset, &b.heightOffset, rng: &rng)
     }
 
     // MARK: - Helpers
@@ -105,9 +105,17 @@ public enum SmartRegionMix {
         a + (b - a) * min(max(t, 0), 1)
     }
 
-    /// A distinct height-offset band per tier (low tiers sit low, high tiers poke up), jittered.
-    private static func heightCenter<R: RandomNumberGenerator>(_ t: Double, rng: inout R) -> Double {
-        lerp(-45, 95, t) + Double.random(in: -8...8, using: &rng)
+    /// A widely-varied height-offset Min ≤ Max pair anywhere in 0…100. Both bounds are drawn
+    /// independently across the full range, so the height ("height" region slider) can reach
+    /// down to zero and up to 100 with a broad spread of Min/Max combinations, rather than
+    /// each layer being pinned to a narrow tiered band.
+    private static func heightPair<R: RandomNumberGenerator>(
+        _ a: inout Double, _ b: inout Double, rng: inout R
+    ) {
+        let x = Double.random(in: 0...100, using: &rng)
+        let y = Double.random(in: 0...100, using: &rng)
+        a = Swift.min(x, y)
+        b = Swift.max(x, y)
     }
 
     /// Sets an ordered Min ≤ Max pair around `center` ± up to `spread`, clamped into range.
@@ -125,5 +133,4 @@ public enum SmartRegionMix {
     private static func clampScale(_ v: Double) -> Double { min(max(v, 0.95), 19.95) }
     private static func clampGain(_ v: Double) -> Double { min(max(v, 0), 10) }
     private static func clampSize(_ v: Double) -> Double { min(max(v, 10), 4000) }
-    private static func clampHeight(_ v: Double) -> Double { min(max(v, -128), 128) }
 }

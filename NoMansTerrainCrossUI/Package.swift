@@ -28,6 +28,17 @@ let package = Package(
             ],
             resources: [
                 .process("Resources"), // base.json: the aggregated base terrain (min/max)
+            ],
+            linkerSettings: [
+                // SwiftCrossUI's view-layout recursion is extremely stack-heavy: each view
+                // `body`/layout frame materializes its whole (wide) TupleView of child-view
+                // structs by value, so single frames consume tens of KB. Windows links
+                // executables with only a 1 MB main-thread stack reserve by default (macOS
+                // gives the main thread 8 MB), which this app's dense Min/Max editor views
+                // overflow → STACK_OVERFLOW (0xC00000FD) in swift_getTypeByMangledName on
+                // launch. Reserve 64 MB on Windows; it's lazily committed virtual address
+                // space (no physical cost until touched) and leaves ample headroom.
+                .unsafeFlags(["-Xlinker", "/STACK:67108864"], .when(platforms: [.windows])),
             ]
         )
     ]

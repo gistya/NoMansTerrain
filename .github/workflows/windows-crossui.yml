@@ -1,0 +1,120 @@
+name: Build Windows Installer (CrossUI)
+
+# Builds the pure-Swift SwiftCrossUI Windows app (NoMansTerrainCrossUI) and packages it as
+# NoMansTerrainSetup.exe — a WiX "bundle" (Burn) bootstrapper that installs the exact
+# WindowsAppRuntime 1.5-preview1 the app is built against, then the app itself. Uploads the
+# Setup.exe (and the app MSI) as artifacts.
+#
+# One-time setup required: this build depends on the private repo `gistya/hastings` (via
+# NoMansTerrainCore's `../../hastings` path dependency). The default GITHUB_TOKEN can't read a
+# different private repo, so add a secret named `HASTINGS_TOKEN`:
+#   1. Create a fine-grained Personal Access Token (github.com -> Settings -> Developer
+#      settings -> Fine-grained tokens) with Contents: Read-only access to `gistya/hastings`.
+#   2. This repo -> Settings -> Secrets and variables -> Actions -> New repository secret,
+#      name it `HASTINGS_TOKEN`, paste the token.
+
+on:
+  push:
+    branches: [main, windows-full-crossui]
+    paths:
+      - 'NoMansTerrainCrossUI/**'
+      - 'NoMansTerrainCore/**'
+      - 'installer/**'
+      - '.github/workflows/windows-crossui.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'NoMansTerrainCrossUI/**'
+      - 'NoMansTerrainCore/**'
+      - 'installer/**'
+      - '.github/workflows/windows-crossui.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # compnerd/gha-setup-swift requires PowerShell, not bash.
+    shell: pwsh
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    steps:
+      - name: Set up Visual Studio dev environment   # link.exe, mt.exe, dumpbin.exe, Windows SDK
+        uses: seanmiddleditch/gha-setup-vsdevenv@v5
+
+      - name: Set up Swift 6.3.2
+        uses: compnerd/gha-setup-swift@v0.2.3
+        with:
+          branch: swift-6.3.2-release
+          tag: 6.3.2-RELEASE
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Check out NoMansTerrain
+        uses: actions/checkout@v4
+
+      - name: Check out private hastings dependency (sibling of the repo)
+        # NoMansTerrainCore references ../../hastings by path, so hastings must sit next to the
+        # repo checkout. GITHUB_WORKSPACE is <root>\NoMansTerrain, so `..\hastings` lands at
+        # <root>\hastings, which is what `../../hastings` resolves to from NoMansTerrainCore.
+        run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ..\hastings
+
+      - name: Build swift-bundler (pinned to the version used locally)
+        run: |
+          git clone https://github.com/stackotter/swift-bundler.git ..\swift-bundler
+          Set-Location ..\swift-bundler
+          git checkout 4ad3f14f0b4c292f5bb57105b834be7f321c4f05
+          swift build -c release --product swift-bundler
+          $sb = Join-Path (Get-Location).Path ".build\x86_64-unknown-windows-msvc\release\swift-bundler.exe"
+          "SWIFT_BUNDLER=$sb" >> $env:GITHUB_ENV
+
+      - name: Install WiX v5
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          $tools = Join-Path $env:USERPROFILE ".dotnet\tools"
+          & "$tools\wix.exe" extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2
+          $tools >> $env:GITHUB_PATH
+
+      - name: Bundle the app
+        working-directory: NoMansTerrainCrossUI
+        run: |
+          # swift-bundler resolves DLL paths via a CASE-SENSITIVE `environment["Path"]` lookup.
+          # GitHub runners expose the variable as "PATH", so the lookup returns nothing and DLL
+          # resolution fails ("Failed to resolve path to DLL named 'swiftCore.dll'"). Rename the
+          # variable to "Path". (The Swift runtime is already on PATH — swift.exe ran above.)
+          $val = [System.Environment]::GetEnvironmentVariable("PATH", "Process")
+          if ($val) {
+            [System.Environment]::SetEnvironmentVariable("PATH", $null, "Process")
+            [System.Environment]::SetEnvironmentVariable("Path", $val, "Process")
+          }
+          & "$env:SWIFT_BUNDLER" bundle NoMansTerrainCrossUI -c release
+
+      - name: Build the installer (Setup.exe + app MSI)
+        run: >
+          ./installer/build.ps1
+          -GenericDir NoMansTerrainCrossUI/.build/bundler/apps/NoMansTerrainCrossUI/NoMansTerrainCrossUI.generic
+
+      - name: Verify outputs
+        run: |
+          foreach ($f in "dist\NoMansTerrainSetup.exe", "dist\NoMansTerrain.msi") {
+            if (-not (Test-Path $f)) { throw "Missing expected output: $f" }
+            Write-Host ("{0}  ({1:N1} MB)" -f $f, ((Get-Item $f).Length / 1MB))
+          }
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoMansTerrain-windows-installer
+          path: |
+            dist/NoMansTerrainSetup.exe
+            dist/NoMansTerrain.msi
+          if-no-files-found: error

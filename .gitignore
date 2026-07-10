@@ -2,3 +2,9 @@
 /Discord-Setup-Package.md
 /NoMansTerrainAvalonia/bin
 /NoMansTerrainAvalonia/obj
+
+# Installer build outputs
+/dist/
+*.wixpdb
+*.wixobj
+/.vscode
