@@ -3,12 +3,16 @@
   Runs `swift-bundler bundle` with the environment fix-ups it needs on Windows.
 
 .DESCRIPTION
-  swift-bundler resolves DLL paths via a CASE-SENSITIVE `environment["Path"]` lookup, so the
-  PATH variable must be named exactly "Path" (GitHub runners / some shells expose it as "PATH",
-  which makes DLL resolution silently return nothing). It also shells out to `swift` and needs
-  the Swift toolchain + runtime (swiftCore.dll) dirs on that Path. This normalises the variable
-  name to "Path" WITHOUT dropping anything, guarantees the swift + runtime dirs are present,
-  verifies `swift` still resolves, then bundles.
+  Two things trip swift-bundler up in a fresh Windows environment (e.g. GitHub runners):
+
+    1. It resolves DLL paths via a CASE-SENSITIVE `environment["Path"]` lookup, so the PATH
+       variable must be named exactly "Path" (runners often expose "PATH").
+    2. It resolves the DLL dependencies (swiftCore.dll, Foundation.dll, ...) by searching that
+       Path. The Swift RUNTIME dir is not necessarily on PATH (the compiler finds it another
+       way), so we must locate it and put it on the Path ourselves.
+
+  This locates the toolchain + runtime + System32 dirs, prepends them, re-exposes the whole
+  thing under the exact name "Path", prints diagnostics, then bundles.
 #>
 param(
   [string]$SwiftBundler = $env:SWIFT_BUNDLER,
@@ -21,30 +25,37 @@ if (-not $SwiftBundler) { throw "SwiftBundler path not provided (set `$env:SWIFT
 
 $swiftExe = (Get-Command swift -ErrorAction Stop).Source
 $swiftDir = Split-Path $swiftExe -Parent
-Write-Host "swift:         $swiftExe"
+Write-Host "swift:    $swiftExe"
 
-# The Swift runtime DLLs (swiftCore.dll) may live in a separate dir from the toolchain.
-$rtLine = (& cmd /c "where swiftCore.dll 2>nul") | Select-Object -First 1
-$rtDir  = if ($rtLine) { Split-Path $rtLine -Parent } else { $null }
-Write-Host "swiftCore.dll: $rtLine"
+# Locate swiftCore.dll. Try next-to-swift and the Swift install root (…\Swift\Runtimes\…),
+# since the runtime dir is frequently NOT on PATH on CI.
+$rtDir = $null
+if (Test-Path (Join-Path $swiftDir 'swiftCore.dll')) {
+  $rtDir = $swiftDir
+} else {
+  $swiftRoot = $swiftDir
+  while ($swiftRoot -and (Split-Path $swiftRoot -Leaf) -ne 'Swift') { $swiftRoot = Split-Path $swiftRoot -Parent }
+  if (-not $swiftRoot) { $swiftRoot = $swiftDir }   # fallback: search from the bin dir
+  $hit = Get-ChildItem -Path $swiftRoot -Recurse -Filter 'swiftCore.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($hit) { $rtDir = Split-Path $hit.FullName -Parent }
+}
+Write-Host "runtime:  $rtDir"
+if (-not $rtDir) { throw "Could not locate swiftCore.dll under the Swift install." }
 
-# Merge every PATH-cased variable (handles 'Path' and/or 'PATH'), ensure the swift + runtime
-# dirs are present, then re-expose the whole thing under the exact name 'Path'.
-$vars    = [System.Environment]::GetEnvironmentVariables('Process')
-$pathVal = (($vars.GetEnumerator() | Where-Object { $_.Key -ieq 'path' }) | ForEach-Object { $_.Value }) -join ';'
-foreach ($d in @($swiftDir, $rtDir)) {
-  if ($d -and ($pathVal -notlike "*$d*")) { $pathVal = "$d;$pathVal" }
-}
-foreach ($k in ($vars.Keys | Where-Object { $_ -ieq 'path' })) {
-  [System.Environment]::SetEnvironmentVariable($k, $null, 'Process')
-}
+# Compose the Path: our required dirs first, then everything already present (deduped), then
+# re-expose it under the exact name "Path".
+$sys32    = Join-Path $env:SystemRoot 'System32'
+$vars     = [System.Environment]::GetEnvironmentVariables('Process')
+$existing = (($vars.GetEnumerator() | Where-Object { $_.Key -ieq 'path' }) | ForEach-Object { $_.Value }) -join ';'
+$parts    = @($swiftDir, $rtDir, $sys32) + ($existing -split ';' | Where-Object { $_ })
+$pathVal  = ($parts | Select-Object -Unique) -join ';'
+foreach ($k in ($vars.Keys | Where-Object { $_ -ieq 'path' })) { [System.Environment]::SetEnvironmentVariable($k, $null, 'Process') }
 [System.Environment]::SetEnvironmentVariable('Path', $pathVal, 'Process')
-Write-Host "normalised Path length: $($pathVal.Length)"
+$env:Path = $pathVal
 
-# Sanity check via the same cmd.exe mechanism swift-bundler uses to invoke `swift`.
-$check = (& cmd /c "where swift 2>nul") | Select-Object -First 1
-if (-not $check) { throw "swift not resolvable after PATH normalisation (Path length $($pathVal.Length))" }
-Write-Host "swift resolvable via cmd: $check"
+Write-Host "Path length:            $($pathVal.Length)"
+Write-Host "swift resolvable:       $([bool](Get-Command swift -ErrorAction SilentlyContinue))"
+Write-Host "swiftCore.dll on Path:  $(Test-Path (Join-Path $rtDir 'swiftCore.dll'))"
 
 Push-Location $PackageDir
 try {
