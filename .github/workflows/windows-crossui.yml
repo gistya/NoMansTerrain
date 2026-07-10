@@ -85,18 +85,10 @@ jobs:
           $tools >> $env:GITHUB_PATH
 
       - name: Bundle the app
-        working-directory: NoMansTerrainCrossUI
-        run: |
-          # swift-bundler resolves DLL paths via a CASE-SENSITIVE `environment["Path"]` lookup.
-          # GitHub runners expose the variable as "PATH", so the lookup returns nothing and DLL
-          # resolution fails ("Failed to resolve path to DLL named 'swiftCore.dll'"). Rename the
-          # variable to "Path". (The Swift runtime is already on PATH — swift.exe ran above.)
-          $val = [System.Environment]::GetEnvironmentVariable("PATH", "Process")
-          if ($val) {
-            [System.Environment]::SetEnvironmentVariable("PATH", $null, "Process")
-            [System.Environment]::SetEnvironmentVariable("Path", $val, "Process")
-          }
-          & "$env:SWIFT_BUNDLER" bundle NoMansTerrainCrossUI -c release
+        # ci-bundle.ps1 normalises the PATH variable name to "Path" (swift-bundler's DLL
+        # resolution does a case-sensitive environment["Path"] lookup), keeps the toolchain +
+        # runtime dirs on it, verifies swift resolves, then runs `swift-bundler bundle`.
+        run: ./installer/ci-bundle.ps1
 
       - name: Build the installer (Setup.exe + app MSI)
         run: >
