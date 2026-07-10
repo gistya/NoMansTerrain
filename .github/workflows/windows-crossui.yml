@@ -68,21 +68,33 @@ jobs:
         # <root>\hastings, which is what `../../hastings` resolves to from NoMansTerrainCore.
         run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ..\hastings
 
-      - name: Build swift-bundler (pinned to the version used locally)
-        run: |
-          git clone https://github.com/stackotter/swift-bundler.git ..\swift-bundler
-          Set-Location ..\swift-bundler
-          git checkout 4ad3f14f0b4c292f5bb57105b834be7f321c4f05
-          swift build -c release --product swift-bundler
-          $sb = Join-Path (Get-Location).Path ".build\x86_64-unknown-windows-msvc\release\swift-bundler.exe"
-          "SWIFT_BUNDLER=$sb" >> $env:GITHUB_ENV
-
       - name: Install WiX v5
         run: |
           dotnet tool install --global wix --version 5.0.2
           $tools = Join-Path $env:USERPROFILE ".dotnet\tools"
           & "$tools\wix.exe" extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2
           $tools >> $env:GITHUB_PATH
+
+      - name: Preflight (fail fast before the ~45-min build)
+        # Verifies swift/runtime/mt/dumpbin/hastings/WiX and that the installer's WiX authoring
+        # actually compiles — so a missing tool or a WiX typo fails now, not after the build.
+        run: ./installer/preflight.ps1
+
+      - name: Build swift-bundler (pinned to the version used locally)
+        run: |
+          git clone https://github.com/stackotter/swift-bundler.git ..\swift-bundler
+          $clone = (Resolve-Path ..\swift-bundler).Path
+          Set-Location $clone
+          git checkout 4ad3f14f0b4c292f5bb57105b834be7f321c4f05
+          swift build -c release --product swift-bundler
+          # Copy the exe out, then delete the whole clone (~3-5 GB of swift-syntax build
+          # intermediates) to free disk for the app build. swift-bundler.exe runs standalone —
+          # the Swift runtime is resolved from PATH, not from files next to it.
+          $sb = Join-Path $env:RUNNER_TEMP "swift-bundler.exe"
+          Copy-Item (Join-Path $clone ".build\x86_64-unknown-windows-msvc\release\swift-bundler.exe") $sb -Force
+          Set-Location $env:GITHUB_WORKSPACE
+          Remove-Item $clone -Recurse -Force
+          "SWIFT_BUNDLER=$sb" >> $env:GITHUB_ENV
 
       - name: Bundle the app
         # ci-bundle.ps1 normalises the PATH variable name to "Path" (swift-bundler's DLL
