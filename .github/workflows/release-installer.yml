@@ -1,0 +1,266 @@
+name: Release Installers
+
+# Builds the downloadable installers for both platforms and publishes them on a GitHub Release:
+#   • macOS  → signs NoMansTerrain.app with Developer ID + hardened runtime, wraps it in a
+#              signed .pkg, notarizes and staples it (mirrors ~/dev/originalPublic/swift-repo-gui).
+#   • Windows → reuses the existing windows-crossui.yml build (NoMansTerrainSetup.exe + MSI).
+#
+# Trigger by pushing a version tag (e.g. `git tag v1.1.0 && git push origin v1.1.0`): both
+# installers are attached to the tag's GitHub Release. `workflow_dispatch` builds them on
+# demand and uploads them as build artifacts instead.
+#
+# Required repository secrets (macOS signing/notarization — documented in ci/RELEASE.md):
+#   CERTIFICATES_P12, CERTIFICATES_P12_PASSWORD, KEYCHAIN_PASSWORD,
+#   APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID
+# Plus HASTINGS_TOKEN (read-only PAT for the private gistya/hastings path dependency), already
+# used by the Windows build.
+
+on:
+  push:
+    tags:
+      - "v*"       # v1.1.0
+      - "[0-9]*"   # 1.1.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Installer version (defaults to the app's MARKETING_VERSION)"
+        required: false
+
+concurrency:
+  group: release-installers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos-installer:
+    # Requires an Xcode 26.x toolchain (the app uses Swift 6.2 default-actor isolation).
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: write # attach the installer to a GitHub Release on tag builds
+    env:
+      PROJECT: NoMansTerrain.xcodeproj
+      SCHEME: NoMansTerrain
+      CONFIGURATION: Release
+      APP_NAME: NoMansTerrain
+      PRODUCT_BUNDLE_ID: com.physicalsoftware.NoMansTerrain
+      TEAM_ID: Y453UXCT86
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check out private hastings dependency (sibling of the repo)
+        # NoMansTerrainCore (and the Xcode project) reference ../hastings by path, so hastings
+        # must sit next to the repo checkout. GITHUB_WORKSPACE is <root>/NoMansTerrain, so
+        # ../hastings lands at <root>/hastings — what `../hastings` resolves to from the project.
+        run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ../hastings
+
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$XC" ]; then XC=/Applications/Xcode.app; fi
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            V="${{ github.event.inputs.version }}"
+          else
+            V=$(grep -m1 'MARKETING_VERSION' "$PROJECT/project.pbxproj" | sed 's/.*= //; s/;//' | tr -d ' ')
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Installer version: $V"
+
+      - name: Import signing certificates
+        env:
+          CERTIFICATES_P12: ${{ secrets.CERTIFICATES_P12 }}
+          CERTIFICATES_P12_PASSWORD: ${{ secrets.CERTIFICATES_P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/app-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/certs.p12"
+
+          echo "$CERTIFICATES_P12" | base64 --decode > "$CERT_PATH"
+
+          # A dedicated, ephemeral keychain that lives only for this job.
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          # Import BOTH Developer ID certs (Application + Installer) from the one .p12.
+          security import "$CERT_PATH" -P "$CERTIFICATES_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+
+          # Let codesign/productbuild use the private keys without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+
+          # Put our keychain first in the search list AND make it the default — xcodebuild's
+          # -exportArchive only looks in the default keychain, so the search list alone isn't enough.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
+          security default-keychain -d user -s "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          echo "Signing identities available:"
+          security find-identity -v "$KEYCHAIN"
+          rm -f "$CERT_PATH"
+
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "Developer ID Application"; then
+            echo "::error::CERTIFICATES_P12 has no 'Developer ID Application' identity with a private key. Export BOTH Developer ID certs *with their private keys* into one .p12."
+            exit 1
+          fi
+          if ! security find-identity -v "$KEYCHAIN" | grep -q "Developer ID Installer"; then
+            echo "::error::CERTIFICATES_P12 has no 'Developer ID Installer' identity. Export BOTH Developer ID certs into one .p12."
+            exit 1
+          fi
+
+      - name: Archive (unsigned)
+        run: |
+          set -euo pipefail
+          # Archive WITHOUT signing — a global CODE_SIGN_IDENTITY override forces every Swift
+          # package target to sign with Developer ID and fail. All signing is done once in the
+          # export + re-sign steps below.
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -destination "generic/platform=macOS" \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export signed .app
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -exportOptionsPlist ci/ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export"
+          ls -la "$RUNNER_TEMP/export"
+
+      - name: Re-sign app with hardened runtime
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/export/$APP_NAME.app"
+          CERT="Developer ID Application"
+          # `exportArchive` re-signs with Developer ID but does NOT enable the hardened runtime,
+          # which notarization requires — so stamp it here on the final bundle. We sign with NO
+          # custom entitlements: the app's checked-in .entitlements (aps-environment / iCloud)
+          # isn't wired into the target (CODE_SIGN_ENTITLEMENTS is unset) and those capabilities
+          # need provisioning profiles that Developer ID distribution doesn't carry — passing
+          # them would fail notarization. Sign embedded Mach-O inside-out first (usually a no-op:
+          # the SPM deps link statically, so there's no Frameworks dir).
+          if [ -d "$APP/Contents/Frameworks" ]; then
+            find "$APP/Contents/Frameworks" -type f -name "*.dylib" -print0 \
+              | while IFS= read -r -d '' f; do codesign --force --options runtime --timestamp -s "$CERT" "$f"; done
+            find "$APP/Contents/Frameworks" -maxdepth 1 -type d -name "*.framework" -print0 \
+              | while IFS= read -r -d '' f; do codesign --force --options runtime --timestamp -s "$CERT" "$f"; done
+          fi
+          codesign --force --options runtime --timestamp -s "$CERT" "$APP"
+
+          # Fail fast (before the slow notarization round-trip) if hardened runtime didn't take.
+          if ! codesign --display --verbose=2 "$APP" 2>&1 | grep -q "flags=.*runtime"; then
+            echo "::error::Hardened runtime is not set on the app after re-signing."
+            exit 1
+          fi
+          codesign --verify --strict --verbose=2 "$APP"
+          echo "Re-signed with hardened runtime ✓"
+
+      - name: Build signed installer (.pkg)
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/export/$APP_NAME.app"
+          PKG="$RUNNER_TEMP/$APP_NAME-${{ steps.version.outputs.version }}.pkg"
+          productbuild \
+            --component "$APP" /Applications \
+            --identifier "$PRODUCT_BUNDLE_ID.pkg" \
+            --version "${{ steps.version.outputs.version }}" \
+            --sign "Developer ID Installer" \
+            "$PKG"
+          pkgutil --check-signature "$PKG"
+          echo "PKG=$PKG" >> "$GITHUB_ENV"
+
+      - name: Notarize and staple
+        env:
+          NOTARY_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -uo pipefail
+          KEYFILE="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$NOTARY_KEY" > "$KEYFILE"
+          notary=(--key "$KEYFILE" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+
+          SUBMIT_JSON=$(xcrun notarytool submit "$PKG" "${notary[@]}" --wait --output-format json)
+          echo "$SUBMIT_JSON"
+          SUB_ID=$(echo "$SUBMIT_JSON" | /usr/bin/python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
+          STATUS=$(echo "$SUBMIT_JSON" | /usr/bin/python3 -c "import sys,json;print(json.load(sys.stdin).get('status',''))" 2>/dev/null || true)
+
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "::error::Notarization status: '${STATUS:-unknown}'. Apple's rejection log follows:"
+            [ -n "$SUB_ID" ] && xcrun notarytool log "$SUB_ID" "${notary[@]}" || echo "(no submission id to fetch a log)"
+            rm -f "$KEYFILE"
+            exit 1
+          fi
+
+          # Staple, retrying while the freshly-issued ticket propagates to Apple's CDN.
+          set -e
+          for attempt in 1 2 3 4 5 6; do
+            if xcrun stapler staple "$PKG"; then break; fi
+            if [ "$attempt" = 6 ]; then echo "::error::Stapling still failing after retries."; rm -f "$KEYFILE"; exit 1; fi
+            echo "Staple attempt $attempt failed; ticket may still be propagating — retrying in 30s…"
+            sleep 30
+          done
+
+          xcrun stapler validate "$PKG"
+          spctl --assess --type install --verbose=4 "$PKG" || true
+          rm -f "$KEYFILE"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}-macos-installer
+          path: ${{ env.PKG }}
+          if-no-files-found: error
+
+      - name: Attach macOS installer to GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.PKG }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+
+  # Reuse the existing, tuned Windows build (NoMansTerrainSetup.exe + MSI). It uploads its
+  # output as the "NoMansTerrain-windows-installer" artifact within this run.
+  windows-installer:
+    uses: ./.github/workflows/windows-crossui.yml
+    secrets: inherit
+
+  # Attach the Windows installer to the same Release on tag builds.
+  attach-windows-installer:
+    needs: windows-installer
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NoMansTerrain-windows-installer
+          path: windows-installer
+
+      - name: Attach Windows installer to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            windows-installer/NoMansTerrainSetup.exe
+            windows-installer/NoMansTerrain.msi
+          fail_on_unmatched_files: true

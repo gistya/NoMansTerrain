@@ -29,6 +29,9 @@ on:
       - 'installer/**'
       - '.github/workflows/windows-crossui.yml'
   workflow_dispatch:
+  # Lets release-installer.yml reuse this exact build on tag releases (and attach the
+  # resulting NoMansTerrainSetup.exe / MSI to the GitHub Release).
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

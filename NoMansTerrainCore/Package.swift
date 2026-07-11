@@ -11,7 +11,7 @@ let package = Package(
             targets: ["NoMansTerrainCore"]
         ),
     ],
-    dependencies: [.package(path: "../../hastings")],
+    dependencies: [.package(url: "https://github.com/gistya/hastings", from: "0.8.0")],
     targets: [
         .target(
             name: "NoMansTerrainCore",

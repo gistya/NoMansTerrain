@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Distribution outside the App Store: signs the .app (and all embedded SPM frameworks)
+         with the "Developer ID Application" certificate and hardened runtime. -->
+    <key>method</key>
+    <string>developer-id</string>
+    <key>teamID</key>
+    <string>Y453UXCT86</string>
+    <!-- Manual signing so CI never needs an interactive Apple ID session; the Developer ID
+         Application identity is imported into a temporary keychain by the workflow. -->
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>signingCertificate</key>
+    <string>Developer ID Application</string>
+</dict>
+</plist>

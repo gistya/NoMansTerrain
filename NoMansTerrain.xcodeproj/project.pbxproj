@@ -37,7 +37,6 @@
 		7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoMansTerrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7385C6332FE03E89005780E2 /* hastings */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = hastings; path = ../hastings; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -122,7 +121,6 @@
 				730938AD2FF1A805001BCBFC /* NoMansTerrainCore */,
 				7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */,
 				737C9D0A2FE09FF20041405F /* nms_terrain */,
-				7385C6332FE03E89005780E2 /* hastings */,
 				7385C4FF2FE03E28005780E2 /* NoMansTerrain */,
 				7385C5112FE03E2A005780E2 /* NoMansTerrainTests */,
 				7385C51B2FE03E2A005780E2 /* NoMansTerrainUITests */,
@@ -375,7 +373,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -433,7 +431,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

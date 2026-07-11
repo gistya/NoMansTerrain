@@ -21,7 +21,7 @@ public enum RegionCategory: String, Sendable, CaseIterable, Identifiable {
 ///
 /// `scaleRange` is the native range of `scale`: 0.95…19.95 (RegionScale) for noise/grid,
 /// 10…4000 (RegionSize) for features/caves. `gain` is nil where a layer has no RegionGain.
-public struct RegionLayerField: Identifiable, Sendable {
+public struct RegionLayerField: Identifiable {
     public let id: String
     public let name: String
     public let colorIndex: Int
