@@ -10,6 +10,8 @@
 		7385C6362FE03EBD005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6352FE03EBD005780E2 /* Hastings */; };
 		7385C6382FE03EC4005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6372FE03EC4005780E2 /* Hastings */; };
 		7385C63A2FE03EC8005780E2 /* Hastings in Frameworks */ = {isa = PBXBuildFile; productRef = 7385C6392FE03EC8005780E2 /* Hastings */; };
+		73C0DE000000000000000A01 /* NoMansTerrainCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0DE000000000000000A02 /* NoMansTerrainCore */; };
+		73C0DE000000000000000B01 /* NoMansTerrainCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0DE000000000000000B02 /* NoMansTerrainCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +33,7 @@
 
 /* Begin PBXFileReference section */
 		7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NoMansTerrain.xctestplan; sourceTree = "<group>"; };
+		730938AD2FF1A805001BCBFC /* NoMansTerrainCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = NoMansTerrainCore; sourceTree = "<group>"; };
 		7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoMansTerrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7385C5182FE03E2A005780E2 /* NoMansTerrainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NoMansTerrainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -89,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7385C6362FE03EBD005780E2 /* Hastings in Frameworks */,
+				73C0DE000000000000000A01 /* NoMansTerrainCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,6 +101,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7385C6382FE03EC4005780E2 /* Hastings in Frameworks */,
+				73C0DE000000000000000B01 /* NoMansTerrainCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -114,6 +119,7 @@
 		7385C4F42FE03E28005780E2 = {
 			isa = PBXGroup;
 			children = (
+				730938AD2FF1A805001BCBFC /* NoMansTerrainCore */,
 				7303749A2FE215BF00992507 /* NoMansTerrain.xctestplan */,
 				737C9D0A2FE09FF20041405F /* nms_terrain */,
 				7385C6332FE03E89005780E2 /* hastings */,
@@ -164,6 +170,7 @@
 			name = NoMansTerrain;
 			packageProductDependencies = (
 				7385C6352FE03EBD005780E2 /* Hastings */,
+				73C0DE000000000000000A02 /* NoMansTerrainCore */,
 			);
 			productName = "Nah Bruh's Terrain";
 			productReference = 7385C4FD2FE03E28005780E2 /* NoMansTerrain.app */;
@@ -189,6 +196,7 @@
 			name = NoMansTerrainTests;
 			packageProductDependencies = (
 				7385C6372FE03EC4005780E2 /* Hastings */,
+				73C0DE000000000000000B02 /* NoMansTerrainCore */,
 			);
 			productName = "Nah Bruh's TerrainTests";
 			productReference = 7385C50E2FE03E2A005780E2 /* NoMansTerrainTests.xctest */;
@@ -367,7 +375,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -425,7 +433,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.physicalsoftware.NoMansTerrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -748,6 +756,14 @@
 		7385C6392FE03EC8005780E2 /* Hastings */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Hastings;
+		};
+		73C0DE000000000000000A02 /* NoMansTerrainCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoMansTerrainCore;
+		};
+		73C0DE000000000000000B02 /* NoMansTerrainCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoMansTerrainCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

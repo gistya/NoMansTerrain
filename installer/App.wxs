@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The app MSI: installs every file from the swift-bundler `.generic` bundle EXCEPT the
+  WindowsAppRuntime installer (that prerequisite is chained separately by Bundle.wxs).
+  Built with: wix build App.wxs -d AppDir=<path-to-.generic> -o App.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="NoMansTerrain"
+    Manufacturer="gistya"
+    Version="0.1.0.0"
+    UpgradeCode="2BE19624-286D-4D88-97BA-0327053ADF78"
+    Scope="perMachine"
+    Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of NoMansTerrain is already installed." />
+    <!-- Embed the file payload in the MSI (no external .cab) so it's self-contained. -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="NoMansTerrain" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="NoMansTerrain" Level="1">
+      <!-- Harvest the whole staged app folder (exe + Swift/Foundation runtime DLLs + resource
+           bundles). AppDir is the .generic bundle with WindowsAppRuntimeInstaller.exe removed —
+           the runtime prerequisite is chained separately by Bundle.wxs. -->
+      <Files Include="$(AppDir)\**" Directory="INSTALLFOLDER" />
+      <ComponentRef Id="AppShortcut" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="AppShortcut" Guid="6F7FDE05-0A93-409B-9038-1815AC461F06">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="NoMansTerrain"
+                  Target="[INSTALLFOLDER]NoMansTerrainCrossUI.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKMU" Key="Software\gistya\NoMansTerrain" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Package>
+</Wix>

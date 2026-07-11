@@ -1,4 +1,11 @@
 /NoMansTerrain.xcodeproj
-/dist
-/.vscode
+/Discord-Setup-Package.md
+/NoMansTerrainAvalonia/bin
 /NoMansTerrainCrossUI/.build
+/NoMansTerrainAvalonia/obj
+
+# Installer build outputs
+/dist/
+*.wixpdb
+*.wixobj
+/.vscode

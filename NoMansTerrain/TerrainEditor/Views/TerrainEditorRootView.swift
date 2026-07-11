@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import SwiftUI
 import SwiftData
 #if os(macOS)
@@ -32,9 +33,17 @@ struct TerrainEditorRootView: View {
 
     @State private var isGenerating = false
     @State private var genProgress = 0
-    @State private var genTotal = TerrainRandomBatch.totalSteps
+    @State private var genTotal = TerrainPreset.all.count
     @State private var genError: String?
     @State private var showGenError = false
+
+    /// When on, the random terrain set (and random slot fills) also apply a balanced "smart
+    /// region mix" to each random terrain. Shared with the folder grid's fill toggle.
+    @AppStorage("terrainSmartMixOnRandom") private var smartMixOnRandom = false
+
+    /// When on, random terrains get every layer's LOD pinned to max (low LODs break in-game).
+    /// Mirrors the editor / folder-grid toggle.
+    @AppStorage("terrainLockLODMax") private var lockLODMax = false
 
     private var filteredSettings: [TerrainSetting] {
         guard !searchText.isEmpty else { return savedSettings }
@@ -110,12 +119,10 @@ struct TerrainEditorRootView: View {
             Color.black.opacity(0.25).ignoresSafeArea()
             VStack(spacing: 14) {
                 ProgressView(value: Double(genProgress), total: Double(max(genTotal, 1))) {
-                    Text("Generating Random Terrain Set…")
+                    Text("Creating Random Terrain Set…")
                         .font(.headline)
                 } currentValueLabel: {
-                    Text(genProgress >= genTotal && genTotal > 0
-                         ? "Assembling combined file…"
-                         : "\(genProgress) of \(genTotal) steps")
+                    Text("\(genProgress) of \(genTotal) slots")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
@@ -203,10 +210,16 @@ struct TerrainEditorRootView: View {
             }
 #if os(macOS)
             ToolbarItem {
-                Button(action: generateRandomSet) {
-                    Label("Generate Random Set…", systemImage: "dice")
+                Menu {
+                    Button("New Random Set", systemImage: "dice", action: generateRandomSet)
+                    Divider()
+                    Toggle("Smart region mix", isOn: $smartMixOnRandom)
+                } label: {
+                    Label("New Random Set", systemImage: "dice")
+                } primaryAction: {
+                    generateRandomSet()
                 }
-                .help("Create a random Min/Max terrain file for every preset and save them to a folder")
+                .help("Create a new in-app folder with a random terrain in every one of the 31 slots. Enable “Smart region mix” to also balance every layer's region coverage.")
                 .disabled(isGenerating)
             }
             ToolbarItem {
@@ -225,7 +238,9 @@ struct TerrainEditorRootView: View {
         }
     }
 
-#if os(macOS)
+    /// Creates a new in-app terrain folder with a freshly randomized terrain snapshot in
+    /// every one of the 31 game slots, then selects it. Runs on the main actor (SwiftData);
+    /// `Task.yield()` between slots lets the progress overlay paint.
     private func generateRandomSet() {
         Task { @MainActor in
             await catalog.loadIfNeeded()
@@ -234,33 +249,42 @@ struct TerrainEditorRootView: View {
                 showGenError = true
                 return
             }
-            guard let directory = chooseDumpDirectory() else { return }
 
             isGenerating = true
             genProgress = 0
-            genTotal = TerrainRandomBatch.totalSteps
+            genTotal = TerrainPreset.all.count
             defer { isGenerating = false }
 
-            let accessed = directory.startAccessingSecurityScopedResource()
-            defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
+            let folder = TerrainSettingsFolder(name: "Random Set")
+            modelContext.insert(folder)
 
-            do {
-                try await TerrainRandomBatch.generateAll(
-                    into: directory,
-                    globalMin: globalMin,
-                    globalMax: globalMax
-                ) { completed, total in
-                    genProgress = completed
-                    genTotal = total
+            for order in 0..<TerrainPreset.all.count {
+                var minData = globalMin
+                var maxData = globalMax
+                TerrainEditorOperations.randomizeRoot(minData: &minData, maxData: &maxData, refMin: globalMin, refMax: globalMax)
+                if smartMixOnRandom {
+                    var rng = SystemRandomNumberGenerator()
+                    SmartRegionMix.apply(min: &minData, max: &maxData, using: &rng)
                 }
-                NSWorkspace.shared.activateFileViewerSelecting([directory])
-            } catch {
-                genError = error.localizedDescription
-                showGenError = true
+                if lockLODMax {
+                    minData = minData.applyingMaxLOD()
+                    maxData = maxData.applyingMaxLOD()
+                }
+                let slot = TerrainSlot(presetOrder: order)
+                slot.folder = folder
+                slot.setSnapshot(min: minData, max: maxData, label: smartMixOnRandom ? "Random Mix" : "Random")
+                modelContext.insert(slot)
+
+                genProgress = order + 1
+                await Task.yield() // let the progress overlay update between slots
             }
+
+            try? modelContext.save()
+            selection = .folder(folder.persistentModelID)
         }
     }
 
+#if os(macOS)
     private func exportInsaneCombined() {
         Task { @MainActor in
             await catalog.loadIfNeeded()
@@ -298,18 +322,6 @@ struct TerrainEditorRootView: View {
         panel.prompt = "Export"
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = TerrainRandomBatch.combinedFileName
-        return panel.runModal() == .OK ? panel.url : nil
-    }
-
-    private func chooseDumpDirectory() -> URL? {
-        let panel = NSOpenPanel()
-        panel.title = "Choose Output Folder"
-        panel.message = "Choose a folder to write the random Min/Max terrain set into."
-        panel.prompt = "Generate Here"
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
         return panel.runModal() == .OK ? panel.url : nil
     }
 #endif

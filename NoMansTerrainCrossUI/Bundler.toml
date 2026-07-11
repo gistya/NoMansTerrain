@@ -1,0 +1,6 @@
+format_version = 2
+
+[apps.NoMansTerrainCrossUI]
+identifier = 'dev.gistya.NoMansTerrainCrossUI'
+product = 'NoMansTerrainCrossUI'
+version = '0.1.0'

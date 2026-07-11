@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import SwiftUI
 import SwiftData
 #if os(macOS)
@@ -24,6 +25,10 @@ struct TerrainFolderGridView: View {
     /// When on, randomly-filled slots get every layer's LOD pinned to max instead of a
     /// random LOD (low LODs cause major in-game issues). Mirrors the editor's toggle.
     @AppStorage("terrainLockLODMax") private var lockLODMax = false
+
+    /// When on, randomly-filled slots also get a balanced "smart region mix" applied so
+    /// every layer gets a good smattering of coverage. Shared with the random-set export.
+    @AppStorage("terrainSmartMixOnRandom") private var smartMixOnRandom = false
 
     private let columns = [GridItem(.adaptive(minimum: 210), spacing: 12)]
 
@@ -83,6 +88,8 @@ struct TerrainFolderGridView: View {
             Menu {
                 Button("Fill Empty with Random", systemImage: "dice") { fillEmpty(.random) }
                 Button("Fill Empty with Preset", systemImage: "mountain.2") { fillEmpty(.preset) }
+                Divider()
+                Toggle("Smart region mix", isOn: $smartMixOnRandom)
             } label: {
                 Label("Fill Empty", systemImage: "wand.and.stars")
             }
@@ -143,11 +150,15 @@ struct TerrainFolderGridView: View {
                     var minData = gmin
                     var maxData = gmax
                     TerrainEditorOperations.randomizeRoot(minData: &minData, maxData: &maxData, refMin: gmin, refMax: gmax)
+                    if smartMixOnRandom {
+                        var rng = SystemRandomNumberGenerator()
+                        SmartRegionMix.apply(min: &minData, max: &maxData, using: &rng)
+                    }
                     if lockLODMax {
                         minData = minData.applyingMaxLOD()
                         maxData = maxData.applyingMaxLOD()
                     }
-                    slot.setSnapshot(min: minData, max: maxData, label: "Random")
+                    slot.setSnapshot(min: minData, max: maxData, label: smartMixOnRandom ? "Random Mix" : "Random")
                 case .preset:
                     if let pair = try? await loader.loadTerrainPair(preset: preset) {
                         slot.setSnapshot(min: pair.min, max: pair.max, label: preset.displayName)

@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 //
 //  ContentView.swift
 //  Nah Bruh's Terrain

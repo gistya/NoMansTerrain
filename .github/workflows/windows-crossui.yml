@@ -1,0 +1,156 @@
+name: Build Windows Installer (CrossUI)
+
+# Builds the pure-Swift SwiftCrossUI Windows app (NoMansTerrainCrossUI) and packages it as
+# NoMansTerrainSetup.exe — a WiX "bundle" (Burn) bootstrapper that installs the exact
+# WindowsAppRuntime 1.5-preview1 the app is built against, then the app itself. Uploads the
+# Setup.exe (and the app MSI) as artifacts.
+#
+# One-time setup required: this build depends on the private repo `gistya/hastings` (via
+# NoMansTerrainCore's `../../hastings` path dependency). The default GITHUB_TOKEN can't read a
+# different private repo, so add a secret named `HASTINGS_TOKEN`:
+#   1. Create a fine-grained Personal Access Token (github.com -> Settings -> Developer
+#      settings -> Fine-grained tokens) with Contents: Read-only access to `gistya/hastings`.
+#   2. This repo -> Settings -> Secrets and variables -> Actions -> New repository secret,
+#      name it `HASTINGS_TOKEN`, paste the token.
+
+on:
+  push:
+    branches: [main, windows-full-crossui]
+    paths:
+      - 'NoMansTerrainCrossUI/**'
+      - 'NoMansTerrainCore/**'
+      - 'installer/**'
+      - '.github/workflows/windows-crossui.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'NoMansTerrainCrossUI/**'
+      - 'NoMansTerrainCore/**'
+      - 'installer/**'
+      - '.github/workflows/windows-crossui.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Queue a newer run behind an in-progress one instead of cancelling it (a long build should
+  # never be killed out from under someone who's waiting on it).
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # compnerd/gha-setup-swift requires PowerShell, not bash.
+    shell: pwsh
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    steps:
+      - name: Set up Visual Studio dev environment   # link.exe, mt.exe, dumpbin.exe, Windows SDK
+        uses: seanmiddleditch/gha-setup-vsdevenv@v5
+
+      - name: Set up Swift 6.3.2
+        uses: compnerd/gha-setup-swift@v0.2.3
+        with:
+          branch: swift-6.3.2-release
+          tag: 6.3.2-RELEASE
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Check out NoMansTerrain
+        uses: actions/checkout@v4
+
+      - name: Check out private hastings dependency (sibling of the repo)
+        # NoMansTerrainCore references ../../hastings by path, so hastings must sit next to the
+        # repo checkout. GITHUB_WORKSPACE is <root>\NoMansTerrain, so `..\hastings` lands at
+        # <root>\hastings, which is what `../../hastings` resolves to from NoMansTerrainCore.
+        run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ..\hastings
+
+      - name: Install WiX v5
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          $tools = Join-Path $env:USERPROFILE ".dotnet\tools"
+          & "$tools\wix.exe" extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2
+          $tools >> $env:GITHUB_PATH
+
+      - name: Preflight (fail fast before the ~45-min build)
+        # Verifies swift/runtime/mt/dumpbin/hastings/WiX and that the installer's WiX authoring
+        # actually compiles — so a missing tool or a WiX typo fails now, not after the build.
+        run: ./installer/preflight.ps1
+
+      # swift-bundler is pinned to a fixed commit + our vendored patch, so its exe never changes
+      # -> cache it and skip the ~10-15 min build on every subsequent run. Bump the trailing
+      # token whenever installer/vendor/GenericWindowsBundler.swift changes.
+      - name: Cache swift-bundler
+        id: sb-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/swift-bundler.exe
+          key: swift-bundler-4ad3f14f-llvmreadobj-swift6.3.2-windows-x64
+
+      - name: Build swift-bundler (only on cache miss)
+        if: steps.sb-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/stackotter/swift-bundler.git ..\swift-bundler
+          $clone = (Resolve-Path ..\swift-bundler).Path
+          Set-Location $clone
+          git checkout 4ad3f14f0b4c292f5bb57105b834be7f321c4f05
+          # Vendored patch: swift-bundler discovers DLL dependencies with `dumpbin /DEPENDENTS`,
+          # which fails with LNK1106 on this app's large Swift .exe. Our copy swaps dumpbin for
+          # `llvm-readobj --needed-libs` (same toolchain, parses large PEs fine). Overwrite the
+          # pinned file wholesale — a file copy has none of `git apply`'s line-ending fragility.
+          Copy-Item "$env:GITHUB_WORKSPACE\installer\vendor\GenericWindowsBundler.swift" "$clone\Sources\SwiftBundler\Bundler\GenericWindowsBundler.swift" -Force
+          swift build -c release --product swift-bundler
+          # Copy the exe to the cached path, then delete the whole clone (~3-5 GB of swift-syntax
+          # intermediates) to free disk for the app build. swift-bundler.exe runs standalone —
+          # the Swift runtime is resolved from PATH, not from files next to it.
+          Copy-Item (Join-Path $clone ".build\x86_64-unknown-windows-msvc\release\swift-bundler.exe") "$env:RUNNER_TEMP\swift-bundler.exe" -Force
+          Set-Location $env:GITHUB_WORKSPACE
+          Remove-Item $clone -Recurse -Force
+
+      - name: Point at swift-bundler
+        run: |
+          "SWIFT_BUNDLER=$env:RUNNER_TEMP\swift-bundler.exe" >> $env:GITHUB_ENV
+
+      # Cache the compiled dependency graph. Keyed on Package.resolved, so it's reused only when
+      # the dependencies are unchanged (the app code always recompiles). Saves the bulk of the
+      # build (~30 min) on subsequent runs; also caches on failed runs, so iterating is fast.
+      # Bump the trailing vN to force a clean rebuild.
+      - name: Cache app build products
+        uses: actions/cache@v4
+        with:
+          path: NoMansTerrainCrossUI/.build
+          key: app-build-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-swift6.3.2-v1
+          restore-keys: |
+            app-build-
+
+      - name: Bundle the app
+        # ci-bundle.ps1 normalises the PATH variable name to "Path" (swift-bundler's DLL
+        # resolution does a case-sensitive environment["Path"] lookup), keeps the toolchain +
+        # runtime dirs on it, verifies swift resolves, then runs `swift-bundler bundle`.
+        run: ./installer/ci-bundle.ps1
+
+      - name: Build the installer (Setup.exe + app MSI)
+        run: >
+          ./installer/build.ps1
+          -GenericDir NoMansTerrainCrossUI/.build/bundler/apps/NoMansTerrainCrossUI/NoMansTerrainCrossUI.generic
+
+      - name: Verify outputs
+        run: |
+          foreach ($f in "dist\NoMansTerrainSetup.exe", "dist\NoMansTerrain.msi") {
+            if (-not (Test-Path $f)) { throw "Missing expected output: $f" }
+            Write-Host ("{0}  ({1:N1} MB)" -f $f, ((Get-Item $f).Length / 1MB))
+          }
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoMansTerrain-windows-installer
+          path: |
+            dist/NoMansTerrainSetup.exe
+            dist/NoMansTerrain.msi
+          if-no-files-found: error

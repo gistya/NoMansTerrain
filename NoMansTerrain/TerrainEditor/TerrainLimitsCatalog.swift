@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 import Foundation
 import Observation
 

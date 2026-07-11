@@ -1,3 +1,4 @@
+import NoMansTerrainCore
 //
 //  Nah_Bruh_s_TerrainTests.swift
 //  Nah Bruh's TerrainTests
@@ -240,6 +241,50 @@ struct NoMansTerrainTests {
         let elementCount = xml.components(separatedBy: "value=\"TkVoxelGeneratorSettingsElement\"").count - 1
         #expect(elementCount == 31)
         #expect(Foundation.XMLParser(data: Data(xml.utf8)).parse(), "Insane combined file should be well-formed XML")
+    }
+
+    // MARK: - Region mask editor
+
+    @Test
+    func regionMaskCoverageApproximatesRatio() {
+        let layer = RegionLayerState(id: "t", name: "T", colorIndex: 0, active: true,
+                                     ratio: 0.35, scale: 6, gain: 2, hasGain: true, elevation: 0)
+        let res = 64
+        var covered = 0
+        for j in 0..<res {
+            for i in 0..<res {
+                let x = Double(i) / Double(res) * RegionMask.worldSpan
+                let y = Double(j) / Double(res) * RegionMask.worldSpan
+                if RegionMask.mask(layer, x: x, y: y) > 0.5 { covered += 1 }
+            }
+        }
+        let frac = Double(covered) / Double(res * res)
+        #expect(abs(frac - 0.35) < 0.12, "Mask coverage \(frac) should be near the ratio 0.35")
+    }
+
+    @Test
+    func regionAutoTierMakesEveryActiveLayerVisible() {
+        let layers = (0..<8).map { i in
+            RegionLayerState(id: "L\(i)", name: "L\(i)", colorIndex: i, active: true,
+                             ratio: 0.9, scale: 5, gain: 2, hasGain: true, elevation: 0)
+        }
+        let tiered = RegionFieldSampler.autoTier(layers)
+        let field = RegionFieldSampler.sample(layers: tiered, resolution: 40)
+        for layer in tiered where layer.active {
+            #expect((field.winCounts[layer.id] ?? 0) > 0, "\(layer.id) should win some cells after auto-tier")
+        }
+    }
+
+    @Test
+    func regionFieldIsDeterministic() {
+        let layers = (0..<5).map { i in
+            RegionLayerState(id: "L\(i)", name: "L\(i)", colorIndex: i, active: true,
+                             ratio: 0.3 + 0.1 * Double(i), scale: Double(2 + i * 3), gain: 2,
+                             hasGain: true, elevation: Double(i) * 10)
+        }
+        let a = RegionFieldSampler.sample(layers: layers, resolution: 24)
+        let b = RegionFieldSampler.sample(layers: layers, resolution: 24)
+        #expect(a.winCounts == b.winCounts)
     }
 
     @Test
@@ -700,5 +745,124 @@ struct NoMansTerrainTests {
         }
 
         #expect(session.minData.seaLevel != originalSeaLevel)
+    }
+
+    // MARK: - Smart region mix
+
+    @Test
+    func smartRegionMixActivatesEveryLayerAndNeverReachesFullCoverage() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        var mn = pair.min
+        var mx = pair.max
+        var rng = SeededGenerator(seed: 0xBADF00D) // deterministic so the test can't flake
+        SmartRegionMix.apply(min: &mn, max: &mx, using: &rng)
+
+        // Every layer the Region Mixer controls is turned on and its coverage sits in a
+        // sane band — never pinned to full (100%) — with Min ≤ Max, on both files.
+        func check(_ active: (Bool, Bool), coverage: (Double, Double), _ label: String) {
+            #expect(active.0 && active.1, "\(label) should be active on both Min and Max")
+            for c in [coverage.0, coverage.1] {
+                #expect(c > 0 && c < 1.0, "\(label) coverage \(c) should be within (0, 1)")
+                #expect(c <= 0.8 + 1e-9, "\(label) coverage \(c) should stay under the 0.8 ceiling")
+            }
+            #expect(coverage.0 <= coverage.1, "\(label) Min coverage should be ≤ Max")
+        }
+
+        for kp in [\NoiseLayers.base, \.mountain, \.underWater, \.continent] {
+            check((mn.noiseLayers[keyPath: kp].active, mx.noiseLayers[keyPath: kp].active),
+                  coverage: (mn.noiseLayers[keyPath: kp].regionRatio, mx.noiseLayers[keyPath: kp].regionRatio),
+                  "noise.\(kp)")
+        }
+        for kp in [\GridLayers.small, \.large, \.resourcesGold] {
+            check((mn.gridLayers[keyPath: kp].active, mx.gridLayers[keyPath: kp].active),
+                  coverage: (mn.gridLayers[keyPath: kp].regionRatio, mx.gridLayers[keyPath: kp].regionRatio),
+                  "grid.\(kp)")
+        }
+        for kp in [\Features.river, \.crater, \.substance] {
+            check((mn.features[keyPath: kp].active, mx.features[keyPath: kp].active),
+                  coverage: (mn.features[keyPath: kp].ratio, mx.features[keyPath: kp].ratio),
+                  "feature.\(kp)")
+        }
+        check((mn.caves.underground.mouth.active, mx.caves.underground.mouth.active),
+              coverage: (mn.caves.underground.mouth.ratio, mx.caves.underground.mouth.ratio), "cave.mouth")
+        check((mn.caves.underground.tunnel.active, mx.caves.underground.tunnel.active),
+              coverage: (mn.caves.underground.tunnel.ratio, mx.caves.underground.tunnel.ratio), "cave.tunnel")
+
+        // Feature patch size (RegionSize) stays in its own native band, not the 0.95…19.95
+        // RegionScale band — proving the feature path isn't confused with noise/grid.
+        #expect(mn.features.river.regionSize >= 10 && mx.features.river.regionSize <= 4000)
+    }
+
+    // MARK: - Portable JSON store (Windows/Linux SwiftData replacement)
+
+    @Test
+    func portableTerrainStoreRoundTripsTerrainsAndFolders() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let pair = try await fileLoader.loadTerrainPair(preset: preset)
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nmt-store-\(UUID().uuidString)", isDirectory: true)
+        let store = TerrainStore(directory: dir)
+
+        let terrain = StoredTerrain(name: "Round Trip", preset: preset, min: pair.min, max: pair.max, isCustom: true)
+        var folder = StoredFolder.empty(name: "Set A")
+        folder.updateSlot(0) { $0.link(to: terrain.id) }                                  // linked
+        folder.updateSlot(1) { $0.setSnapshot(min: pair.min, max: pair.max, label: "Snap") } // snapshot
+
+        try store.saveTerrains([terrain])
+        try store.saveFolders([folder])
+
+        // Reload from disk with a fresh store instance.
+        let reloaded = TerrainStore(directory: dir).load()
+        #expect(reloaded.terrains.count == 1)
+        #expect(reloaded.folders.count == 1)
+
+        let t = try #require(reloaded.terrains.first)
+        #expect(t.name == "Round Trip")
+        #expect(t.isCustom)
+        #expect(t.min.seaLevel == pair.min.seaLevel)
+        #expect(t.max.noiseLayers.base.height == pair.max.noiseLayers.base.height)
+
+        let f = try #require(reloaded.folders.first)
+        #expect(f.slots.count == TerrainPreset.all.count)
+        #expect(f.filledCount == 2)
+
+        let linked = f.orderedSlots[0]
+        #expect(linked.isLinked)
+        #expect(linked.resolvedMin(in: reloaded.terrains)?.seaLevel == pair.min.seaLevel)
+        #expect(linked.displayLabel(in: reloaded.terrains) == "Round Trip")
+
+        let snapshot = f.orderedSlots[1]
+        #expect(snapshot.isSnapshot)
+        #expect(snapshot.resolvedMax(in: reloaded.terrains)?.noiseLayers.base.height == pair.max.noiseLayers.base.height)
+    }
+
+    @Test
+    func lockRegionMixRestoresRegionFieldsButKeepsOtherEdits() async throws {
+        let fileLoader = FileLoader()
+        let preset = try #require(try await fileLoader.availablePresets().first)
+        let base = try await fileLoader.loadTerrainPair(preset: preset).min
+
+        // Change one region field and one non-region field on a couple of layers.
+        var modified = base
+        modified.noiseLayers.base.regionRatio = base.noiseLayers.base.regionRatio + 0.15
+        modified.noiseLayers.base.regionGain = base.noiseLayers.base.regionGain + 1.0
+        modified.noiseLayers.base.height = base.noiseLayers.base.height + 5      // non-region
+        modified.features.river.ratio = base.features.river.ratio + 0.1
+        modified.features.river.width = base.features.river.width + 3            // non-region
+
+        let restored = modified.preservingRegionMix(from: base)
+
+        // Region-mixing fields snap back to the base…
+        #expect(restored.noiseLayers.base.regionRatio == base.noiseLayers.base.regionRatio)
+        #expect(restored.noiseLayers.base.regionGain == base.noiseLayers.base.regionGain)
+        #expect(restored.features.river.ratio == base.features.river.ratio)
+        // …while everything else keeps the edit.
+        #expect(restored.noiseLayers.base.height == modified.noiseLayers.base.height)
+        #expect(restored.features.river.width == modified.features.river.width)
     }
 }
