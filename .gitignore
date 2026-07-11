@@ -1,1 +1,4 @@
 /NoMansTerrain.xcodeproj
+/dist
+/.vscode
+/NoMansTerrainCrossUI/.build
