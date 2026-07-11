@@ -43,7 +43,9 @@ Write-Host "== Preflight: everything the bundle + installer steps depend on =="
 Check "swift on PATH"          { (Get-Command swift -ErrorAction Stop).Source }
 Check "swiftCore.dll locatable" { Find-Runtime }
 Check "mt.exe (manifest tool)" { (Get-Command mt.exe -ErrorAction Stop).Source }
-Check "dumpbin.exe"            { (Get-Command dumpbin.exe -ErrorAction Stop).Source }
+# Our vendored swift-bundler patch enumerates DLL deps with llvm-readobj (dumpbin LNK1106s on
+# the app's large .exe), so llvm-readobj — not dumpbin — is what the bundle step now needs.
+Check "llvm-readobj"          { (Get-Command llvm-readobj -ErrorAction Stop).Source }
 Check "hastings checkout"      { (Resolve-Path (Join-Path $here '..\..\hastings') -ErrorAction Stop).Path }
 Check "wix CLI"               { (& wix --version) 2>&1 | Select-Object -First 1 }
 

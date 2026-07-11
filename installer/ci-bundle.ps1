@@ -66,12 +66,17 @@ function Show-Disk($label) {
 Show-Disk 'before'
 Push-Location $PackageDir
 try {
-  # -gnone: don't embed DWARF debug info. Swift release exes are otherwise huge (the debug info
-  # dominates), and the copy into the bundle overflows the small CI workspace drive (LNK1106
-  # "disk full" from dumpbin on a truncated exe). This shrinks it substantially.
+  # -gnone: don't embed DWARF debug info (in case the exe is bloated by it).
   & $SwiftBundler bundle $Product -c release --Xswiftpm=-Xswiftc --Xswiftpm=-gnone
   $code = $LASTEXITCODE
 }
 finally { Pop-Location }
 Show-Disk 'after'
+
+# Informational: size of the bundled exe that gets packaged.
+$genExe = Join-Path $PackageDir ".build\bundler\apps\$Product\$Product.generic\$Product.exe"
+if (Test-Path $genExe) {
+  Write-Host ("  bundled exe: {0:N1} MB" -f ((Get-Item $genExe).Length / 1MB))
+}
+
 if ($code -ne 0) { throw "swift-bundler bundle failed ($code)" }

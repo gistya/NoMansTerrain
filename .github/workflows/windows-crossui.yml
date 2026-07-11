@@ -32,7 +32,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Queue a newer run behind an in-progress one instead of cancelling it (a long build should
+  # never be killed out from under someone who's waiting on it).
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -80,14 +82,15 @@ jobs:
         # actually compiles — so a missing tool or a WiX typo fails now, not after the build.
         run: ./installer/preflight.ps1
 
-      # swift-bundler is pinned to a fixed commit, so its exe never changes -> cache it and skip
-      # the ~10-15 min build on every subsequent run.
+      # swift-bundler is pinned to a fixed commit + our vendored patch, so its exe never changes
+      # -> cache it and skip the ~10-15 min build on every subsequent run. Bump the trailing
+      # token whenever installer/vendor/GenericWindowsBundler.swift changes.
       - name: Cache swift-bundler
         id: sb-cache
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/swift-bundler.exe
-          key: swift-bundler-4ad3f14f-swift6.3.2-windows-x64
+          key: swift-bundler-4ad3f14f-llvmreadobj-swift6.3.2-windows-x64
 
       - name: Build swift-bundler (only on cache miss)
         if: steps.sb-cache.outputs.cache-hit != 'true'
@@ -96,6 +99,11 @@ jobs:
           $clone = (Resolve-Path ..\swift-bundler).Path
           Set-Location $clone
           git checkout 4ad3f14f0b4c292f5bb57105b834be7f321c4f05
+          # Vendored patch: swift-bundler discovers DLL dependencies with `dumpbin /DEPENDENTS`,
+          # which fails with LNK1106 on this app's large Swift .exe. Our copy swaps dumpbin for
+          # `llvm-readobj --needed-libs` (same toolchain, parses large PEs fine). Overwrite the
+          # pinned file wholesale — a file copy has none of `git apply`'s line-ending fragility.
+          Copy-Item "$env:GITHUB_WORKSPACE\installer\vendor\GenericWindowsBundler.swift" "$clone\Sources\SwiftBundler\Bundler\GenericWindowsBundler.swift" -Force
           swift build -c release --product swift-bundler
           # Copy the exe to the cached path, then delete the whole clone (~3-5 GB of swift-syntax
           # intermediates) to free disk for the app build. swift-bundler.exe runs standalone —
