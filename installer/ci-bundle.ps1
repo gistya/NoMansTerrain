@@ -66,10 +66,10 @@ function Show-Disk($label) {
 Show-Disk 'before'
 Push-Location $PackageDir
 try {
-  # -gnone: don't embed DWARF debug info. Swift release exes are otherwise huge (~375 MB here,
-  # almost all debug info), which overflows the small workspace drive on CI when the exe is
-  # copied into the bundle. This shrinks it to tens of MB. --strip removes leftover symbols.
-  & $SwiftBundler bundle $Product -c release --strip --Xswiftpm=-Xswiftc --Xswiftpm=-gnone
+  # -gnone: don't embed DWARF debug info. Swift release exes are otherwise huge (the debug info
+  # dominates), and the copy into the bundle overflows the small CI workspace drive (LNK1106
+  # "disk full" from dumpbin on a truncated exe). This shrinks it substantially.
+  & $SwiftBundler bundle $Product -c release --Xswiftpm=-Xswiftc --Xswiftpm=-gnone
   $code = $LASTEXITCODE
 }
 finally { Pop-Location }
