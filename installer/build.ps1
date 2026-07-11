@@ -18,15 +18,27 @@ param(
   # Path to the swift-bundler output: ...\NoMansTerrainCrossUI.generic
   [Parameter(Mandatory = $true)][string]$GenericDir,
   # Where to write NoMansTerrain.msi and NoMansTerrainSetup.exe
-  [string]$OutDir = (Join-Path $PSScriptRoot "..\dist")
+  [string]$OutDir = (Join-Path $PSScriptRoot "..\dist"),
+  # The WindowsAppRuntime installer to chain in the bootstrapper. IMPORTANT: the installer that
+  # swift-bundler drops in the .generic is the STABLE 1.5 build (1.5.250108004), which is the WRONG
+  # package family — this app is framework-dependent on 1.5-PREVIEW1 (1.5.240205001-preview1) and
+  # will NOT launch against stable 1.5. CI downloads the correct preview1 installer and passes it
+  # here. If omitted, we fall back to the .generic one (only correct if you replaced it yourself).
+  [string]$RuntimeInstaller
 )
 
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 
 $GenericDir = (Resolve-Path $GenericDir).Path
-$runtimeInstaller = Join-Path $GenericDir 'WindowsAppRuntimeInstaller.exe'
-if (-not (Test-Path $runtimeInstaller)) { throw "WindowsAppRuntimeInstaller.exe not found in $GenericDir" }
+if ($RuntimeInstaller) {
+  $runtimeInstaller = (Resolve-Path $RuntimeInstaller).Path
+} else {
+  $runtimeInstaller = Join-Path $GenericDir 'WindowsAppRuntimeInstaller.exe'
+  Write-Warning "No -RuntimeInstaller given; using the .generic one, which is STABLE 1.5 (wrong for this app)."
+}
+if (-not (Test-Path $runtimeInstaller)) { throw "Runtime installer not found: $runtimeInstaller" }
+Write-Host "Runtime installer: $runtimeInstaller ($('{0:N1}' -f ((Get-Item $runtimeInstaller).Length / 1MB)) MB)"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $OutDir = (Resolve-Path $OutDir).Path

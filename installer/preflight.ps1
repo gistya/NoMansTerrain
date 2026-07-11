@@ -48,6 +48,14 @@ Check "mt.exe (manifest tool)" { (Get-Command mt.exe -ErrorAction Stop).Source }
 Check "llvm-readobj"          { (Get-Command llvm-readobj -ErrorAction Stop).Source }
 Check "hastings checkout"      { (Resolve-Path (Join-Path $here '..\..\hastings') -ErrorAction Stop).Path }
 Check "wix CLI"               { (& wix --version) 2>&1 | Select-Object -First 1 }
+# The installer chains the WindowsAppRuntime 1.5-PREVIEW1 runtime (a different package family than
+# stable 1.5; the app won't launch without it). Fail now if Microsoft moved the pinned download.
+Check "preview1 runtime URL"  {
+  $url = "https://aka.ms/windowsappsdk/1.5/1.5.240205001-preview1/windowsappruntimeinstall-x64.exe"
+  $r = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+  if ($r.StatusCode -ne 200) { throw "HTTP $($r.StatusCode)" }
+  "HTTP 200"
+}
 
 # The real payoff: prove the WiX authoring compiles now, with dummy inputs.
 Check "App.wxs + Bundle.wxs compile" {

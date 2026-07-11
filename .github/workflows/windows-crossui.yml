@@ -138,9 +138,20 @@ jobs:
         run: ./installer/ci-bundle.ps1
 
       - name: Build the installer (Setup.exe + app MSI)
-        run: >
-          ./installer/build.ps1
-          -GenericDir NoMansTerrainCrossUI/.build/bundler/apps/NoMansTerrainCrossUI/NoMansTerrainCrossUI.generic
+        run: |
+          # swift-bundler bundles the STABLE 1.5 runtime (1.5.250108004), but this app is
+          # framework-dependent on 1.5-PREVIEW1 (a different package family) and won't launch
+          # against stable. Download the correct preview1 installer and chain THAT.
+          $rt = "$env:RUNNER_TEMP\WindowsAppRuntimeInstaller-preview1.exe"
+          $url = "https://aka.ms/windowsappsdk/1.5/1.5.240205001-preview1/windowsappruntimeinstall-x64.exe"
+          Write-Host "Downloading preview1 runtime installer: $url"
+          Invoke-WebRequest -Uri $url -OutFile $rt -UseBasicParsing
+          $mb = (Get-Item $rt).Length / 1MB
+          Write-Host ("Downloaded {0:N1} MB" -f $mb)
+          if ($mb -lt 10) { throw "Runtime installer download looks wrong ($mb MB) — got an error page?" }
+          ./installer/build.ps1 `
+            -GenericDir NoMansTerrainCrossUI/.build/bundler/apps/NoMansTerrainCrossUI/NoMansTerrainCrossUI.generic `
+            -RuntimeInstaller $rt
 
       - name: Verify outputs
         run: |
