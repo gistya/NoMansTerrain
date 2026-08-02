@@ -53,7 +53,30 @@ jobs:
         # NoMansTerrainCore (and the Xcode project) reference ../hastings by path, so hastings
         # must sit next to the repo checkout. GITHUB_WORKSPACE is <root>/NoMansTerrain, so
         # ../hastings lands at <root>/hastings — what `../hastings` resolves to from the project.
-        run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ../hastings
+        timeout-minutes: 5   # backstop: never let a stuck clone eat the whole 60-min job
+        env:
+          # GIT_TERMINAL_PROMPT=0 makes git FAIL instead of blocking on an interactive
+          # credential prompt (the reason a bad/empty token hangs forever on a CI runner).
+          GIT_TERMINAL_PROMPT: "0"
+          HASTINGS_TOKEN: ${{ secrets.HASTINGS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HASTINGS_TOKEN:-}" ]; then
+            echo "::error::HASTINGS_TOKEN is empty or not available to this job — check the secret name/scope."
+            exit 1
+          fi
+          REMOTE="https://x-access-token:${HASTINGS_TOKEN}@github.com/gistya/hastings.git"
+          # Ignore any runner credential helper (macOS runners have osxkeychain) so only the
+          # embedded token is used and nothing can prompt.
+          git_() { git -c credential.helper= -c credential.interactive=false "$@"; }
+          # Fast auth probe — fails in seconds with a clear message instead of hanging on clone.
+          if ! git_ ls-remote "$REMOTE" HEAD >/dev/null; then
+            echo "::error::Cannot access gistya/hastings with HASTINGS_TOKEN. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
+            exit 1
+          fi
+          git_ clone --depth 1 "$REMOTE" ../hastings
+          echo "hastings cloned at commit:"
+          git -C ../hastings log -1 --oneline
 
       - name: Select Xcode 26
         run: |

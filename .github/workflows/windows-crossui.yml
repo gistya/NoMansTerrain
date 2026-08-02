@@ -71,7 +71,35 @@ jobs:
         # NoMansTerrainCore references ../../hastings by path, so hastings must sit next to the
         # repo checkout. GITHUB_WORKSPACE is <root>\NoMansTerrain, so `..\hastings` lands at
         # <root>\hastings, which is what `../../hastings` resolves to from NoMansTerrainCore.
-        run: git clone --depth 1 "https://x-access-token:${{ secrets.HASTINGS_TOKEN }}@github.com/gistya/hastings.git" ..\hastings
+        # Fails HARD on any auth problem (no interactive prompt to hang on), and exports the
+        # cloned commit so the build cache is keyed to it — a build can NOT proceed on a missing
+        # or stale hastings.
+        id: hastings
+        timeout-minutes: 5   # backstop: never let a stuck clone eat the whole job
+        env:
+          GIT_TERMINAL_PROMPT: "0"                     # fail, don't block on a credential prompt
+          HASTINGS_TOKEN: ${{ secrets.HASTINGS_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrEmpty($env:HASTINGS_TOKEN)) {
+            Write-Host "::error::HASTINGS_TOKEN is empty or not available to this job — check the secret name/scope."
+            exit 1
+          }
+          $remote = "https://x-access-token:$($env:HASTINGS_TOKEN)@github.com/gistya/hastings.git"
+          # Ignore any runner credential helper so only the embedded token is used (nothing prompts).
+          $g = @('-c','credential.helper=','-c','credential.interactive=false')
+          # Fast auth probe — fails in seconds with a clear message instead of hanging on the clone.
+          git @g ls-remote $remote HEAD *> $null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Cannot access gistya/hastings with HASTINGS_TOKEN. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
+            exit 1
+          }
+          git @g clone --depth 1 $remote ..\hastings
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::hastings clone failed."; exit 1 }
+          $sha = (git -C ..\hastings rev-parse HEAD).Trim()
+          Write-Host "hastings cloned at commit:"
+          git -C ..\hastings log -1 --oneline
+          "sha=$sha" >> $env:GITHUB_OUTPUT
 
       - name: Install WiX v5
         run: |
@@ -81,7 +109,7 @@ jobs:
           $tools >> $env:GITHUB_PATH
 
       - name: Preflight (fail fast before the ~45-min build)
-        # Verifies swift/runtime/mt/dumpbin/hastings/WiX and that the installer's WiX authoring
+        # Verifies swift/runtime/mt/llvm-readobj/hastings/WiX and that the installer's WiX authoring
         # actually compiles — so a missing tool or a WiX typo fails now, not after the build.
         run: ./installer/preflight.ps1
 
@@ -119,17 +147,19 @@ jobs:
         run: |
           "SWIFT_BUNDLER=$env:RUNNER_TEMP\swift-bundler.exe" >> $env:GITHUB_ENV
 
-      # Cache the compiled dependency graph. Keyed on Package.resolved, so it's reused only when
-      # the dependencies are unchanged (the app code always recompiles). Saves the bulk of the
-      # build (~30 min) on subsequent runs; also caches on failed runs, so iterating is fast.
-      # Bump the trailing vN to force a clean rebuild.
+      # Cache the compiled dependency graph. The key pins BOTH the SPM deps (Package.resolved) AND
+      # the hastings commit (a path dependency, so it is NOT in Package.resolved — without this a
+      # hastings change would silently reuse a stale, ABI-incompatible build and the app would
+      # crash at runtime). restore-keys is scoped to the SAME Package.resolved so a fallback can
+      # only ever reuse a build with identical SPM deps (differing at most in hastings, which SPM
+      # then recompiles) — never one from a different dependency set. Bump vN to force a clean rebuild.
       - name: Cache app build products
         uses: actions/cache@v4
         with:
           path: NoMansTerrainCrossUI/.build
-          key: app-build-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-swift6.3.2-v1
+          key: app-build-v2-swift6.3.2-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-hastings-${{ steps.hastings.outputs.sha }}
           restore-keys: |
-            app-build-
+            app-build-v2-swift6.3.2-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-
 
       - name: Bundle the app
         # ci-bundle.ps1 normalises the PATH variable name to "Path" (swift-bundler's DLL

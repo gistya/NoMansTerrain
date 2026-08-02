@@ -1,5 +1,5 @@
 {
-  "originHash" : "3b49b3e72194a9f0532b8e4abb589128f9f993bfabec5d92ffde69778c7a3028",
+  "originHash" : "b6a135a15c6945037d4c489a53d160668c5ed22414c90ad1746ef061ba839d84",
   "pins" : [
     {
       "identity" : "androidkit",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "d5142b5a9b90fa940be54a2a41d7fd5842f21111",
         "version" : "0.8.1"
+      }
+    },
+    {
+      "identity" : "hastings",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gistya/hastings",
+      "state" : {
+        "revision" : "925ddd30f854062dce744b42d17a50d93bfd4abd",
+        "version" : "0.8.0"
       }
     },
     {
