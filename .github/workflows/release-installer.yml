@@ -49,15 +49,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check out private hastings dependency (sibling of the repo)
-        # NoMansTerrainCore (and the Xcode project) reference ../hastings by path, so hastings
-        # must sit next to the repo checkout. GITHUB_WORKSPACE is <root>/NoMansTerrain, so
-        # ../hastings lands at <root>/hastings — what `../hastings` resolves to from the project.
-        timeout-minutes: 5   # backstop: never let a stuck clone eat the whole 60-min job
+      - name: Authenticate SwiftPM to the private hastings dependency
+        # The Xcode project resolves the PRIVATE gistya/hastings BY URL (via NoMansTerrainCore's
+        # Package.swift), so xcodebuild's SwiftPM resolution clones it from GitHub — there is NO
+        # sibling checkout; SwiftPM fetches it itself. The default GITHUB_TOKEN can't read a
+        # different private repo, so rewrite the hastings URL (git insteadOf) to embed
+        # HASTINGS_TOKEN. Probes the token first so a bad/expired PAT fails fast.
+        timeout-minutes: 5
         env:
-          # GIT_TERMINAL_PROMPT=0 makes git FAIL instead of blocking on an interactive
-          # credential prompt (the reason a bad/empty token hangs forever on a CI runner).
-          GIT_TERMINAL_PROMPT: "0"
+          GIT_TERMINAL_PROMPT: "0"   # fail, don't block on an interactive credential prompt
           HASTINGS_TOKEN: ${{ secrets.HASTINGS_TOKEN }}
         run: |
           set -euo pipefail
@@ -65,21 +65,18 @@ jobs:
             echo "::error::HASTINGS_TOKEN is empty or not available to this job — check the secret name/scope."
             exit 1
           fi
-          REMOTE="https://x-access-token:${HASTINGS_TOKEN}@github.com/gistya/hastings.git"
-          # actions/checkout writes an `http.https://github.com/.extraheader` (the GITHUB_TOKEN)
-          # into the workspace repo config; `ls-remote` run here inherits it and would auth as
-          # GITHUB_TOKEN (no access to gistya/hastings). CLEAR it and any credential helper so only
-          # the embedded HASTINGS_TOKEN is used. (`git clone` ignores workspace-local config, but we
-          # pass the same flags for consistency.)
-          git_() { git -c credential.helper= -c http.extraheader= -c "http.https://github.com/.extraheader=" "$@"; }
-          # Fast auth probe — fails in seconds with a clear message instead of hanging on clone.
-          if ! git_ ls-remote "$REMOTE" HEAD >/dev/null; then
-            echo "::error::Cannot access gistya/hastings with HASTINGS_TOKEN. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
+          tok="$(printf '%s' "$HASTINGS_TOKEN" | tr -d '[:space:]')"
+          # Fast auth probe. Clear the workspace `http.https://github.com/.extraheader` (the
+          # GITHUB_TOKEN actions/checkout stored) so the probe uses HASTINGS_TOKEN, not it.
+          if ! git -c credential.helper= -c http.extraheader= -c "http.https://github.com/.extraheader=" \
+                 ls-remote "https://x-access-token:${tok}@github.com/gistya/hastings.git" HEAD >/dev/null; then
+            echo "::error::HASTINGS_TOKEN cannot read gistya/hastings. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
             exit 1
           fi
-          git_ clone --depth 1 "$REMOTE" ../hastings
-          echo "hastings cloned at commit:"
-          git -C ../hastings log -1 --oneline
+          # Make SwiftPM's clone of the private hastings URL authenticate with the token. Force
+          # xcodebuild to use system git (which honors insteadOf) rather than its built-in client.
+          git config --global url."https://x-access-token:${tok}@github.com/gistya/hastings".insteadOf "https://github.com/gistya/hastings"
+          echo "hastings access verified; SwiftPM will authenticate via git insteadOf."
 
       - name: Select Xcode 26
         run: |
@@ -157,6 +154,7 @@ jobs:
             -configuration "$CONFIGURATION" \
             -destination "generic/platform=macOS" \
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -scmProvider system \
             -skipMacroValidation \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO

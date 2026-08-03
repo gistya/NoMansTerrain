@@ -67,15 +67,13 @@ jobs:
       - name: Check out NoMansTerrain
         uses: actions/checkout@v4
 
-      - name: Check out private hastings dependency (sibling of the repo)
-        # NoMansTerrainCore references ../../hastings by path, so hastings must sit next to the
-        # repo checkout. GITHUB_WORKSPACE is <root>\NoMansTerrain, so `..\hastings` lands at
-        # <root>\hastings, which is what `../../hastings` resolves to from NoMansTerrainCore.
-        # Fails HARD on any auth problem (no interactive prompt to hang on), and exports the
-        # cloned commit so the build cache is keyed to it — a build can NOT proceed on a missing
-        # or stale hastings.
-        id: hastings
-        timeout-minutes: 5   # backstop: never let a stuck clone eat the whole job
+      - name: Authenticate SwiftPM to the private hastings dependency
+        # NoMansTerrainCore depends on the PRIVATE gistya/hastings BY URL (see its Package.swift),
+        # so `swift package resolve` clones it from GitHub during the build — there is NO sibling
+        # checkout; SwiftPM fetches it itself. The default GITHUB_TOKEN can't read a different
+        # private repo, so rewrite the hastings URL (git insteadOf) to embed HASTINGS_TOKEN. Also
+        # probes the token first so a bad/expired PAT fails in seconds, not after the long build.
+        timeout-minutes: 5
         env:
           GIT_TERMINAL_PROMPT: "0"                     # fail, don't block on a credential prompt
           HASTINGS_TOKEN: ${{ secrets.HASTINGS_TOKEN }}
@@ -85,25 +83,17 @@ jobs:
             Write-Host "::error::HASTINGS_TOKEN is empty or not available to this job — check the secret name/scope."
             exit 1
           }
-          $remote = "https://x-access-token:$($env:HASTINGS_TOKEN)@github.com/gistya/hastings.git"
-          # actions/checkout writes an `http.https://github.com/.extraheader` (the GITHUB_TOKEN)
-          # into the workspace repo config. `ls-remote` run here inherits it and would auth as
-          # GITHUB_TOKEN — which can't read gistya/hastings — so CLEAR it and disable helpers, so
-          # only the embedded HASTINGS_TOKEN is used. (`git clone` ignores workspace-local config,
-          # but we pass the same flags for consistency.)
-          $g = @('-c','credential.helper=','-c','http.extraheader=','-c','http.https://github.com/.extraheader=')
-          # Fast auth probe — fails in seconds with a clear message instead of hanging on the clone.
-          git @g ls-remote $remote HEAD *> $null
+          $tok = $env:HASTINGS_TOKEN.Trim()
+          # Fast auth probe. Clear the workspace `http.https://github.com/.extraheader` (the
+          # GITHUB_TOKEN that actions/checkout stored) so the probe uses HASTINGS_TOKEN, not it.
+          git -c credential.helper= -c http.extraheader= -c "http.https://github.com/.extraheader=" ls-remote "https://x-access-token:$tok@github.com/gistya/hastings.git" HEAD *> $null
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Cannot access gistya/hastings with HASTINGS_TOKEN. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
+            Write-Host "::error::HASTINGS_TOKEN cannot read gistya/hastings. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."
             exit 1
           }
-          git @g clone --depth 1 $remote ..\hastings
-          if ($LASTEXITCODE -ne 0) { Write-Host "::error::hastings clone failed."; exit 1 }
-          $sha = (git -C ..\hastings rev-parse HEAD).Trim()
-          Write-Host "hastings cloned at commit:"
-          git -C ..\hastings log -1 --oneline
-          "sha=$sha" >> $env:GITHUB_OUTPUT
+          # Make SwiftPM's clone of the private hastings URL authenticate with the token.
+          git config --global url."https://x-access-token:$tok@github.com/gistya/hastings".insteadOf "https://github.com/gistya/hastings"
+          Write-Host "hastings access verified; SwiftPM will authenticate via git insteadOf."
 
       - name: Install WiX v5
         run: |
@@ -151,19 +141,18 @@ jobs:
         run: |
           "SWIFT_BUNDLER=$env:RUNNER_TEMP\swift-bundler.exe" >> $env:GITHUB_ENV
 
-      # Cache the compiled dependency graph. The key pins BOTH the SPM deps (Package.resolved) AND
-      # the hastings commit (a path dependency, so it is NOT in Package.resolved — without this a
-      # hastings change would silently reuse a stale, ABI-incompatible build and the app would
-      # crash at runtime). restore-keys is scoped to the SAME Package.resolved so a fallback can
-      # only ever reuse a build with identical SPM deps (differing at most in hastings, which SPM
-      # then recompiles) — never one from a different dependency set. Bump vN to force a clean rebuild.
+      # Cache the compiled dependency graph, keyed on Package.resolved — which pins EVERY dependency
+      # including hastings (a remote URL dep, so its exact revision lives here). A hastings bump
+      # changes this file and busts the cache, so CI can't reuse a stale, ABI-incompatible build.
+      # restore-keys is scoped to the SAME v3 scheme so a fallback never reuses a build from a
+      # different dependency layout. Bump vN to force a clean rebuild.
       - name: Cache app build products
         uses: actions/cache@v4
         with:
           path: NoMansTerrainCrossUI/.build
-          key: app-build-v2-swift6.3.2-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-hastings-${{ steps.hastings.outputs.sha }}
+          key: app-build-v3-swift6.3.2-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}
           restore-keys: |
-            app-build-v2-swift6.3.2-${{ hashFiles('NoMansTerrainCrossUI/Package.resolved') }}-
+            app-build-v3-swift6.3.2-
 
       - name: Bundle the app
         # ci-bundle.ps1 normalises the PATH variable name to "Path" (swift-bundler's DLL
