@@ -66,9 +66,12 @@ jobs:
             exit 1
           fi
           REMOTE="https://x-access-token:${HASTINGS_TOKEN}@github.com/gistya/hastings.git"
-          # Ignore any runner credential helper (macOS runners have osxkeychain) so only the
-          # embedded token is used and nothing can prompt.
-          git_() { git -c credential.helper= -c credential.interactive=false "$@"; }
+          # actions/checkout writes an `http.https://github.com/.extraheader` (the GITHUB_TOKEN)
+          # into the workspace repo config; `ls-remote` run here inherits it and would auth as
+          # GITHUB_TOKEN (no access to gistya/hastings). CLEAR it and any credential helper so only
+          # the embedded HASTINGS_TOKEN is used. (`git clone` ignores workspace-local config, but we
+          # pass the same flags for consistency.)
+          git_() { git -c credential.helper= -c http.extraheader= -c "http.https://github.com/.extraheader=" "$@"; }
           # Fast auth probe — fails in seconds with a clear message instead of hanging on clone.
           if ! git_ ls-remote "$REMOTE" HEAD >/dev/null; then
             echo "::error::Cannot access gistya/hastings with HASTINGS_TOKEN. Likely: token expired, missing Contents:Read, hastings not in the token's repository-access list, wrong resource owner, or org approval pending."

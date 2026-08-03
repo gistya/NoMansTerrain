@@ -86,8 +86,12 @@ jobs:
             exit 1
           }
           $remote = "https://x-access-token:$($env:HASTINGS_TOKEN)@github.com/gistya/hastings.git"
-          # Ignore any runner credential helper so only the embedded token is used (nothing prompts).
-          $g = @('-c','credential.helper=','-c','credential.interactive=false')
+          # actions/checkout writes an `http.https://github.com/.extraheader` (the GITHUB_TOKEN)
+          # into the workspace repo config. `ls-remote` run here inherits it and would auth as
+          # GITHUB_TOKEN — which can't read gistya/hastings — so CLEAR it and disable helpers, so
+          # only the embedded HASTINGS_TOKEN is used. (`git clone` ignores workspace-local config,
+          # but we pass the same flags for consistency.)
+          $g = @('-c','credential.helper=','-c','http.extraheader=','-c','http.https://github.com/.extraheader=')
           # Fast auth probe — fails in seconds with a clear message instead of hanging on the clone.
           git @g ls-remote $remote HEAD *> $null
           if ($LASTEXITCODE -ne 0) {
