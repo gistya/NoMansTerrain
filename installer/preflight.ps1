@@ -46,7 +46,15 @@ Check "mt.exe (manifest tool)" { (Get-Command mt.exe -ErrorAction Stop).Source }
 # Our vendored swift-bundler patch enumerates DLL deps with llvm-readobj (dumpbin LNK1106s on
 # the app's large .exe), so llvm-readobj — not dumpbin — is what the bundle step now needs.
 Check "llvm-readobj"          { (Get-Command llvm-readobj -ErrorAction Stop).Source }
-Check "hastings checkout"      { (Resolve-Path (Join-Path $here '..\..\hastings') -ErrorAction Stop).Path }
+# hastings is a PRIVATE remote URL dependency; the "Authenticate SwiftPM..." step set a global git
+# insteadOf that rewrites its URL with the token. Verify SwiftPM's fetch path works: clear the
+# workspace extraheader (the GITHUB_TOKEN actions/checkout stored) so this exercises the insteadOf +
+# HASTINGS_TOKEN, exactly as `swift package resolve` will when it clones hastings.
+Check "hastings resolvable"    {
+  git -c http.extraheader= -c "http.https://github.com/.extraheader=" ls-remote "https://github.com/gistya/hastings" HEAD *> $null
+  if ($LASTEXITCODE -ne 0) { throw "git ls-remote https://github.com/gistya/hastings failed (is the insteadOf/token configured?)" }
+  "reachable via insteadOf"
+}
 Check "wix CLI"               { (& wix --version) 2>&1 | Select-Object -First 1 }
 # The installer chains the WindowsAppRuntime 1.5-PREVIEW1 runtime (a different package family than
 # stable 1.5; the app won't launch without it). Fail now if Microsoft moved the pinned download.
