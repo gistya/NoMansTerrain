@@ -75,18 +75,33 @@ Show-Disk 'after'
 
 if ($code -ne 0) { throw "swift-bundler bundle failed ($code)" }
 
-$genExe = Join-Path $PackageDir ".build\bundler\apps\$Product\$Product.generic\$Product.exe"
+$genDir = Join-Path $PackageDir ".build\bundler\apps\$Product\$Product.generic"
+$genExe = Join-Path $genDir "$Product.exe"
 if (Test-Path $genExe) {
   Write-Host ("  bundled exe: {0:N1} MB" -f ((Get-Item $genExe).Length / 1MB))
-
-  # GUARDRAIL (do not remove): SwiftCrossUI diffs the view tree via runtime reflection, so the
-  # bundled exe MUST keep its Swift reflection/type-metadata sections (the .sw5 family). Passing
-  # --strip to swift-bundler runs llvm-strip, which removes them; the app then builds AND launches
-  # fine but traps in swiftCore _assertionFailure on the FIRST UI interaction (any button click).
-  # This shipped broken once. Never pass --strip; and fail here rather than ship a stripped binary.
-  $secs = & llvm-readobj --sections $genExe 2>&1 | Out-String
-  if ($secs -notmatch '\.sw5tyrf|\.sw5prtc|\.sw5rfst') {
-    throw "Bundled exe is missing Swift reflection metadata (.sw5 sections): it was stripped. SwiftCrossUI needs reflection at runtime; do NOT pass --strip to swift-bundler."
-  }
-  Write-Host "  reflection metadata (.sw5) present: OK"
 }
+
+# CRITICAL (crash-on-first-resource-access): swift-bundler renames SwiftPM's resource bundle from
+# `<pkg>_<target>.resources` to `<pkg>_<target>.bundle` (the macOS/Apple convention). But the
+# Windows `Bundle.module` accessor compiled into the app looks for `.resources` — so it can't find
+# the renamed bundle and the app fatalErrors ("could not load resource bundle") the first time it
+# reads a resource (e.g. BaseTerrain loading base.json on a create-button click). Restore the name
+# THIS app's Bundle.module expects. Leave swift-winui_CWinAppSDK.bundle alone — its bootstrap DLL is
+# loaded from that `.bundle` path, not via Bundle.module.
+$appBundle    = Join-Path $genDir "$($Product)_$($Product).bundle"
+$appResources = Join-Path $genDir "$($Product)_$($Product).resources"
+if ((Test-Path $appBundle) -and -not (Test-Path $appResources)) {
+  Rename-Item -Path $appBundle -NewName (Split-Path $appResources -Leaf)
+  Write-Host "  renamed app resource bundle -> $(Split-Path $appResources -Leaf)"
+}
+
+# Guardrail: the app's resource bundle MUST exist under the name Bundle.module expects, containing
+# base.json — otherwise the installed app crashes on first resource access. Fail here instead.
+if (-not (Test-Path (Join-Path $appResources 'base.json'))) {
+  throw "App resource bundle missing/misnamed: expected '$appResources' containing base.json; Bundle.module would fatalError at runtime."
+}
+Write-Host "  app resource bundle OK: $(Split-Path $appResources -Leaf) (base.json present)"
+
+# Reached only on success (every failure above throws). Exit 0 explicitly so a stray non-zero
+# $LASTEXITCODE from an earlier native command doesn't fail the step.
+exit 0

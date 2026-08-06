@@ -67,6 +67,7 @@ struct NoMansTerrainCrossUIApp: App {
             Button("+ Terrain") { newBlankTerrain() }
             Button("+ Folder") { newFolder() }
             Button("🎲 New Set") { newRandomSet() }
+            Button("🏔 Base Set") { newBaseSet() }
             Spacer()
             if !statusMessage.isEmpty {
                 Text(statusMessage).font(.caption)
@@ -232,6 +233,32 @@ struct NoMansTerrainCrossUIApp: App {
         try? store.saveFolders(folders)
         selection = .folder(folder.id)
         statusMessage = "Created \(folder.name)"
+    }
+
+    /// Creates a set whose 31 slots hold the game's actual base terrains, loaded from the bundled
+    /// per-preset XML (mirrors the macOS "Fill with Preset"). `FileLoader` is an actor and the XML
+    /// parse is off the main thread, so load asynchronously and update state when done.
+    private func newBaseSet() {
+        let presets = TerrainPreset.all
+        let setNumber = folders.count + 1
+        statusMessage = "Creating base set…"
+        Task {
+            let loader = FileLoader()
+            var folder = StoredFolder.empty(name: "Base Set \(setNumber)")
+            var loaded = 0
+            for order in 0..<presets.count {
+                let preset = presets[order]
+                guard let pair = try? await loader.loadTerrainPair(preset: preset, in: .module) else { continue }
+                folder.updateSlot(order) { $0.setSnapshot(min: pair.min, max: pair.max, label: preset.displayName) }
+                loaded += 1
+            }
+            folders.append(folder)
+            try? store.saveFolders(folders)
+            selection = .folder(folder.id)
+            statusMessage = loaded == presets.count
+                ? "Created \(folder.name)"
+                : "Created \(folder.name) — \(loaded)/\(presets.count) base terrains loaded"
+        }
     }
 
     private func deleteTerrain(_ id: UUID) {
