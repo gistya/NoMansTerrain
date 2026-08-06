@@ -73,10 +73,20 @@ try {
 finally { Pop-Location }
 Show-Disk 'after'
 
-# Informational: size of the bundled exe that gets packaged.
+if ($code -ne 0) { throw "swift-bundler bundle failed ($code)" }
+
 $genExe = Join-Path $PackageDir ".build\bundler\apps\$Product\$Product.generic\$Product.exe"
 if (Test-Path $genExe) {
   Write-Host ("  bundled exe: {0:N1} MB" -f ((Get-Item $genExe).Length / 1MB))
-}
 
-if ($code -ne 0) { throw "swift-bundler bundle failed ($code)" }
+  # GUARDRAIL (do not remove): SwiftCrossUI diffs the view tree via runtime reflection, so the
+  # bundled exe MUST keep its Swift reflection/type-metadata sections (the .sw5 family). Passing
+  # --strip to swift-bundler runs llvm-strip, which removes them; the app then builds AND launches
+  # fine but traps in swiftCore _assertionFailure on the FIRST UI interaction (any button click).
+  # This shipped broken once. Never pass --strip; and fail here rather than ship a stripped binary.
+  $secs = & llvm-readobj --sections $genExe 2>&1 | Out-String
+  if ($secs -notmatch '\.sw5tyrf|\.sw5prtc|\.sw5rfst') {
+    throw "Bundled exe is missing Swift reflection metadata (.sw5 sections): it was stripped. SwiftCrossUI needs reflection at runtime; do NOT pass --strip to swift-bundler."
+  }
+  Write-Host "  reflection metadata (.sw5) present: OK"
+}
