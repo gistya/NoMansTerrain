@@ -1,4 +1,32 @@
-# NoMansTerrain — Terrain Settings Field Reference
+# NoMansTerrain 
+
+## Unleash the full craziness latent within the NMS terrain engine
+## with NoMansTerrain: Easy Mode for Terrain Modding in NMS on Mac and Windows
+
+### Visualize Terrain Layering with the Region Mixer
+
+<img width="1719" height="1600" alt="Screenshot 2026-08-10 095942" src="https://github.com/user-attachments/assets/1dfb50e1-083a-49a9-88d5-e74e2ab2ba06" />
+
+### With NoMansTerrain you can: 
+
+- Create new TerrainSettings and Slot Them in All 31 Preset Slots
+- Edit stock terrains to customize them
+- Randomize any/all aspects of terrain
+- Apply smart region-mixing to terrains for crazy results
+- Take advantage of hidden/disabled features of the terrain engine
+
+### Note: Use of terrain mods makes your base locations possibly inaccessible. Only use in single player.
+
+## Examples
+
+<img width="3840" height="2160" alt="20260731212133_1" src="https://github.com/user-attachments/assets/0aa58b98-9a91-4548-91c5-c340c6243447" />
+<img width="3840" height="2160" alt="20260731204944_1" src="https://github.com/user-attachments/assets/ef7c284c-6169-4821-8f77-7122edbfad26" />
+<img width="3840" height="2160" alt="20260709210958_1" src="https://github.com/user-attachments/assets/6a9d0894-9c1d-44ed-9feb-6fdf90bad48a" />
+<img width="3840" height="2160" alt="20260803103646_1" src="https://github.com/user-attachments/assets/228b79ac-b4ff-4209-8045-94ed9f954135" />
+<img width="3840" height="2160" alt="20260709211144_1" src="https://github.com/user-attachments/assets/154ea319-e29d-497e-9fcb-30f933647a64" />
+<img width="3840" height="2160" alt="20260701045117_1" src="https://github.com/user-attachments/assets/97eb4464-7854-460d-9884-f2be2e5b71a2" />
+
+## Terrain Settings Field Reference
 
 A best-effort explanation of what every field in No Man's Sky's
 `VoxelGeneratorSettings` (the data this app edits) actually does to the planet you
@@ -266,53 +294,6 @@ think a parametric "squircle solid." Used when `NoiseGridType = SuperPrimitive`/
 - **DebugNoiseType**: `Uber` (real), `Plane`, `Check`, `Sine` (debug). ❓
 - **FeatureType**: `Tube`, `Blob`. 🔶
 - **NoiseGridType**: the grid primitive list in §4. ✅
-
----
-
-## 9. Going deeper: decompiling NMS yourself
-
-You don't actually need a disassembler to understand most of this, and here's the order I'd
-work in:
-
-1. **The data files (you're already here).** `VoxelGeneratorSettings.MBIN` lives inside the
-   packed archives at
-   `…/No Man's Sky.app/Contents/Resources/GAMEDATA/MACOSBANKS/*.pak` (these are **PSARC**
-   archives). The flow is: unpack the `.pak` → get `.MBIN` → convert `.MBIN` ↔ readable
-   `.EXML/.MXML` with **MBINCompiler**. *(You already maintain a macOS fork of MBINCompiler —
-   that's exactly the tool, and it's how the files this app edits were produced.)*
-   - Easiest all-in-one: **AMUMSS** (the community mod-builder) wraps unpacking +
-     MBINCompiler + repacking with Lua scripts.
-
-2. **The algorithm — read the author, don't disassemble.** ✅ The terrain noise is published.
-   Giliam de Carpentier's site documents the exact erosion/warp terms that the `NoiseData`
-   fields map onto, and the GDC 2017 talk covers the world-gen architecture. This is far more
-   useful than staring at assembly:
-   - de Carpentier, *Procedural & noise extensions*: <https://www.decarpentier.nl/scape-procedural-extensions>
-   - GDC 2017, *Continuous World Generation in No Man's Sky*: <https://www.gdcvault.com/play/1024265/Continuous-World-Generation-in-No>
-
-3. **Live tweaking (fastest feedback loop).** ✅ The Step Mods tutorial walks through using
-   **Cheat Engine** to find the active terrain floats in memory and edit them while flying —
-   change a value, dive to the surface, see the effect, no rebuild. (Cheat Engine is Windows;
-   on a Mac you'd do this in a Windows VM or on a PC copy.)
-
-4. **Actually disassembling the executable (last resort).** The macOS binary is a 201 MB
-   **universal Mach-O** (`x86_64` + `arm64`) at `…/Contents/MacOS/No Man's Sky`. If you want
-   the real generator code:
-   - **Ghidra** (free, from the NSA) or **IDA Pro** / **Binary Ninja** / **Hopper** (Hopper is
-     Mac-native and the gentlest start). Load the binary, let it auto-analyze, and search for
-     the `TkVoxelGeneratorData`/`TkNoiseUberData` field strings — MBIN structs keep their
-     names, so string search lands you near the (de)serialization and often near the consumers.
-   - Thin the universal binary first for sanity:
-     `lipo "No Man's Sky" -thin arm64 -output nms_arm64` (or `-thin x86_64`).
-   - Reality check: this is a big, optimized C++ binary with no symbols for the hot math. The
-     community has mostly *not* gone this route for terrain — steps 2 + 3 got them the
-     knowledge on this page. Decompiling is worth it only for something the published material
-     and live-editing can't answer.
-
-> [!WARNING]
-> Stay on the data/modding side. Don't redistribute extracted game assets or the binary —
-> keep your work to your own local copy and shareable *mod files* (the `.MBIN`/`.pak` you
-> author), which is how the NMS modding community operates.
 
 ---
 
