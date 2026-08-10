@@ -15,11 +15,17 @@ struct NoMansTerrainCrossUIApp: App {
     }
 
     private let store = TerrainStore.default()
+    /// Reference channel for the terrain editor's in-progress draft — read on Save / terrain-switch.
+    /// (A reference so per-keystroke edits don't touch app `@State` and recompute the whole window.)
+    private let editBuffer = TerrainEditBuffer()
 
     @State var terrains: [StoredTerrain]
     @State var folders: [StoredFolder]
     @State var selection: Selection?
     @State var statusMessage = ""
+    /// True when in-memory state has edits not yet written to the JSON store. Persistence is
+    /// manual (the Save button) — writing to disk on every value change made the UI unusably slow.
+    @State var hasUnsavedChanges = false
     /// The terrain/folder awaiting a delete confirmation (nil when no dialog is up).
     @State var pendingDelete: Selection?
 
@@ -68,7 +74,11 @@ struct NoMansTerrainCrossUIApp: App {
             Button("+ Folder") { newFolder() }
             Button("🎲 New Set") { newRandomSet() }
             Button("🏔 Base Set") { newBaseSet() }
+            Button("💾 Save") { save() }.disabled(!hasUnsavedChanges)
             Spacer()
+            if hasUnsavedChanges {
+                Text("● Unsaved changes").font(.caption)
+            }
             if !statusMessage.isEmpty {
                 Text(statusMessage).font(.caption)
             }
@@ -140,8 +150,15 @@ struct NoMansTerrainCrossUIApp: App {
     private var detail: some View {
         switch selection {
         case .terrain(let id):
-            if let binding = terrainBinding(id) {
-                TerrainDetailView(terrain: binding)
+            if let value = terrains.first(where: { $0.id == id }) {
+                TerrainDetailView(
+                    terrain: value,
+                    editBuffer: editBuffer,
+                    onEdited: { if !hasUnsavedChanges { hasUnsavedChanges = true } },
+                    onCommitDraft: { commitTerrainDraft() },
+                    onCreateTestSetFolder: { createTestSetFolder(from: $0) },
+                    onStatus: { statusMessage = $0 }
+                )
             } else {
                 placeholder("Select a terrain")
             }
@@ -171,7 +188,29 @@ struct NoMansTerrainCrossUIApp: App {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Bindings (persist on write)
+    // MARK: - Persistence
+
+    /// The ONLY place that writes to the JSON store. Edits and structural changes just flip
+    /// `hasUnsavedChanges`; nothing touches disk until the user presses Save. (Saving on every
+    /// value change — a full JSON re-serialize + synchronous disk write per slider tick — is what
+    /// made the UI unusably slow.)
+    private func save() {
+        commitTerrainDraft()
+        try? store.saveTerrains(terrains)
+        try? store.saveFolders(folders)
+        hasUnsavedChanges = false
+        statusMessage = "Saved"
+    }
+
+    /// Pulls the terrain editor's in-progress draft (if any) out of the edit buffer and into the
+    /// `terrains` array. Called before persisting and before switching terrains, so nothing is lost.
+    private func commitTerrainDraft() {
+        guard let edited = editBuffer.editing,
+              let idx = terrains.firstIndex(where: { $0.id == edited.id }) else { return }
+        terrains[idx] = edited
+    }
+
+    // MARK: - Bindings (in-memory; persisted via Save)
 
     private func terrainBinding(_ id: UUID) -> Binding<StoredTerrain>? {
         guard terrains.contains(where: { $0.id == id }) else { return nil }
@@ -180,7 +219,7 @@ struct NoMansTerrainCrossUIApp: App {
             set: { newValue in
                 if let idx = terrains.firstIndex(where: { $0.id == id }) {
                     terrains[idx] = newValue
-                    try? store.saveTerrains(terrains)
+                    if !hasUnsavedChanges { hasUnsavedChanges = true }  // persist on Save, not per-edit
                 }
             }
         )
@@ -193,7 +232,7 @@ struct NoMansTerrainCrossUIApp: App {
             set: { newValue in
                 if let idx = folders.firstIndex(where: { $0.id == id }) {
                     folders[idx] = newValue
-                    try? store.saveFolders(folders)
+                    if !hasUnsavedChanges { hasUnsavedChanges = true }  // persist on Save, not per-edit
                 }
             }
         )
@@ -209,14 +248,14 @@ struct NoMansTerrainCrossUIApp: App {
             min: base.min, max: base.max, isCustom: true
         )
         terrains.append(terrain)
-        try? store.saveTerrains(terrains)
+        hasUnsavedChanges = true
         selection = .terrain(terrain.id)
     }
 
     private func newFolder() {
         let folder = StoredFolder.empty(name: "Terrain Set \(folders.count + 1)")
         folders.append(folder)
-        try? store.saveFolders(folders)
+        hasUnsavedChanges = true
         selection = .folder(folder.id)
     }
 
@@ -230,7 +269,7 @@ struct NoMansTerrainCrossUIApp: App {
             folder.updateSlot(order) { $0.setSnapshot(min: minData, max: maxData, label: "Random") }
         }
         folders.append(folder)
-        try? store.saveFolders(folders)
+        hasUnsavedChanges = true
         selection = .folder(folder.id)
         statusMessage = "Created \(folder.name)"
     }
@@ -253,7 +292,7 @@ struct NoMansTerrainCrossUIApp: App {
                 loaded += 1
             }
             folders.append(folder)
-            try? store.saveFolders(folders)
+            hasUnsavedChanges = true
             selection = .folder(folder.id)
             statusMessage = loaded == presets.count
                 ? "Created \(folder.name)"
@@ -261,15 +300,27 @@ struct NoMansTerrainCrossUIApp: App {
         }
     }
 
+    /// Creates a sidebar folder whose 31 slots are all the given terrain — the in-app counterpart
+    /// of the "Export as Test Set" modal's "+ Save Folder" option.
+    private func createTestSetFolder(from terrain: StoredTerrain) {
+        var folder = StoredFolder.empty(name: "Test Set: \(terrain.name)")
+        for order in 0..<TerrainPreset.all.count {
+            folder.updateSlot(order) { $0.setSnapshot(min: terrain.min, max: terrain.max, label: terrain.name) }
+        }
+        folders.append(folder)
+        hasUnsavedChanges = true
+        statusMessage = "Saved test set folder “\(folder.name)”"
+    }
+
     private func deleteTerrain(_ id: UUID) {
         terrains.removeAll { $0.id == id }
-        try? store.saveTerrains(terrains)
+        hasUnsavedChanges = true
         if selection == .terrain(id) { selection = nil }
     }
 
     private func deleteFolder(_ id: UUID) {
         folders.removeAll { $0.id == id }
-        try? store.saveFolders(folders)
+        hasUnsavedChanges = true
         if selection == .folder(id) { selection = nil }
     }
 
@@ -340,10 +391,10 @@ struct NoMansTerrainCrossUIApp: App {
             isCustom: true
         )
         terrains.append(terrain)
-        try? store.saveTerrains(terrains)
+        hasUnsavedChanges = true
         if let idx = folders.firstIndex(where: { $0.id == folderID }) {
             folders[idx].updateSlot(slot.presetOrder) { $0.link(to: terrain.id) }
-            try? store.saveFolders(folders)
+            hasUnsavedChanges = true
         }
         selection = .terrain(terrain.id)
     }

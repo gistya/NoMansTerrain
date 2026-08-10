@@ -6,8 +6,49 @@ import SwiftCrossUI
 /// Grid, Features, Caves (all per-field Min/Max controls) plus the Region Mixer. SwiftCrossUI
 /// has no drag gesture, so region layout is slider-based. Edits flow back through the
 /// `terrain` binding, which the app persists on write.
+/// Reference channel so the terrain editor's in-progress draft can reach the app (for Save and for
+/// switching terrains) WITHOUT writing app-level `@State` on every keystroke — which would recompute
+/// the whole window. Writing a class property triggers no view update, so per-edit cost stays local.
+final class TerrainEditBuffer {
+    var editing: StoredTerrain?
+}
+
 struct TerrainDetailView: View {
-    @Binding var terrain: StoredTerrain
+    /// Source-of-truth terrain from the app; used only to (re)seed `draft` when the selection changes.
+    let terrain: StoredTerrain
+    /// Where the app reads the in-progress draft on Save / terrain-switch (a reference → no re-render).
+    let editBuffer: TerrainEditBuffer
+    /// Flags the app dirty on first edit (guarded app-side → ~one app re-render per editing session).
+    var onEdited: () -> Void = { }
+    /// Commits the current editBuffer draft into the app's array — called just before switching terrains.
+    var onCommitDraft: () -> Void = { }
+    /// Creates an in-app folder whose 31 slots are all this terrain (the modal's "also save as folder").
+    var onCreateTestSetFolder: (StoredTerrain) -> Void = { _ in }
+    /// Surfaces export status to the app's status line.
+    var onStatus: (String) -> Void = { _ in }
+
+    @Environment(\.chooseFileSaveDestination) private var chooseSaveDestination
+    @State private var showTestSetModal = false
+    /// The live edit copy. Edits mutate THIS (SwiftCrossUI recomputes only this view's subtree),
+    /// not the app's `terrains` array — that's the whole perf fix.
+    @State private var draft: StoredTerrain
+
+    init(
+        terrain: StoredTerrain,
+        editBuffer: TerrainEditBuffer,
+        onEdited: @escaping () -> Void = { },
+        onCommitDraft: @escaping () -> Void = { },
+        onCreateTestSetFolder: @escaping (StoredTerrain) -> Void = { _ in },
+        onStatus: @escaping (String) -> Void = { _ in }
+    ) {
+        self.terrain = terrain
+        self.editBuffer = editBuffer
+        self.onEdited = onEdited
+        self.onCommitDraft = onCommitDraft
+        self.onCreateTestSetFolder = onCreateTestSetFolder
+        self.onStatus = onStatus
+        _draft = State(wrappedValue: terrain)
+    }
 
     enum Section: String, CaseIterable, Identifiable {
         case general = "General", noise = "Noise", grid = "Grid"
@@ -45,12 +86,28 @@ struct TerrainDetailView: View {
         ("Cave Mouth", \.caves.underground.mouth), ("Cave Tunnel", \.caves.underground.tunnel)
     ]
 
-    private var minData: Binding<TkVoxelGeneratorData> { bind($terrain, \.min) }
-    private var maxData: Binding<TkVoxelGeneratorData> { bind($terrain, \.max) }
+    /// The single write path: update the local draft (scoped re-render), mirror it into the app's
+    /// read channel (a reference write → no re-render), and mark the app dirty.
+    private func setDraft(_ newValue: StoredTerrain) {
+        draft = newValue
+        editBuffer.editing = newValue
+        onEdited()
+    }
+    private var draftBinding: Binding<StoredTerrain> {
+        Binding(get: { draft }, set: { setDraft($0) })
+    }
+    private var minData: Binding<TkVoxelGeneratorData> { bind(draftBinding, \.min) }
+    private var maxData: Binding<TkVoxelGeneratorData> { bind(draftBinding, \.max) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Name", text: bind($terrain, \.name))
+            HStack(spacing: 8) {
+                TextField("Name", text: bind(draftBinding, \.name))
+                // Export this one terrain into all 31 template slots — used for testing, since a
+                // planet's terrain template is picked pseudorandomly from its seed, so filling
+                // every slot with the same terrain guarantees it shows up regardless.
+                Button("⬆ Export as Test Set") { showTestSetModal = true }
+            }
 
             HStack(spacing: 4) {
                 ForEach(Section.allCases, id: \.id) { s in
@@ -59,6 +116,11 @@ struct TerrainDetailView: View {
             }
 
             layerPicker
+
+            // Randomize just the current section (the Region mixer has its own Smart Mix instead).
+            if section != .regions {
+                Button("🎲 Randomize \(section.rawValue)") { randomizeSection() }
+            }
 
             if section == .regions {
                 regionMixer
@@ -70,6 +132,52 @@ struct TerrainDetailView: View {
             Spacer()
         }
         .padding(12)
+        // The modal: export the .MXML, with the option to also drop a folder into the sidebar.
+        .alert("Export test set — all 31 slots use this terrain", isPresented: $showTestSetModal) {
+            Button("Export .MXML") { exportTestSet(alsoFolder: false) }
+            Button("Export + Save Folder") { exportTestSet(alsoFolder: true) }
+            Button("Cancel") { }
+        }
+        // Selecting a DIFFERENT terrain reuses this view (with its old @State draft) — commit the
+        // outgoing draft into the app, then reseed the draft from the newly-selected terrain.
+        .onChange(of: terrain.id) {
+            onCommitDraft()
+            draft = terrain
+            editBuffer.editing = nil
+        }
+    }
+
+    /// Writes a combined `.MXML` with THIS terrain replicated into every one of the 31 game
+    /// template slots (so the pseudorandom template pick can't miss it). Optionally also saves an
+    /// equivalent folder into the sidebar.
+    private func exportTestSet(alsoFolder: Bool) {
+        let current = draft   // snapshot the live edit draft so the async write can't race an edit
+        if alsoFolder { onCreateTestSetFolder(current) }
+        let all = TerrainPreset.all
+        let entries = all.map {
+            NMSPropertySerializer.CombinedEntry(name: $0.fileBaseName, min: current.min, max: current.max)
+        }
+        Task {
+            guard let chosen = await chooseSaveDestination(
+                title: "Export Test Set",
+                message: "Writes “\(current.name)” into all \(all.count) template slots.",
+                defaultButtonLabel: "Export",
+                defaultFileName: "voxelgeneratorsettings.MXML"
+            ) else { return } // user cancelled
+            // WinUI's save picker hardcodes `.txt`; normalise to the `.MXML` the game expects.
+            var url = chosen
+            if url.pathExtension.caseInsensitiveCompare("MXML") != .orderedSame {
+                url.deletePathExtension()
+                url.appendPathExtension("MXML")
+                if url != chosen { try? FileManager.default.removeItem(at: chosen) }
+            }
+            do {
+                try NMSPropertySerializer.writeCombined(entries, to: url)
+                onStatus("Exported test set — \(entries.count) slots of “\(current.name)” → \(url.path)")
+            } catch {
+                onStatus("Export failed: \(error)")
+            }
+        }
     }
 
     // MARK: - Layer sub-picker (Noise/Grid/Features/Caves)
@@ -172,7 +280,7 @@ struct TerrainDetailView: View {
     }
 
     private func refreshedBox() -> RegionFieldBox {
-        let data = showMax ? terrain.max : terrain.min
+        let data = showMax ? draft.max : draft.min
         let states = fields.map { RegionLayerRegistry.state($0, in: data) }
         fieldBox.field = RegionFieldSampler.sample(layers: states, resolution: resolution)
         return fieldBox
@@ -185,13 +293,18 @@ struct TerrainDetailView: View {
 
     private func regionBinding(_ kp: WritableKeyPath<TkVoxelGeneratorData, Double>) -> Binding<Double> {
         Binding(
-            get: { (showMax ? terrain.max : terrain.min)[keyPath: kp] },
-            set: { v in if showMax { terrain.max[keyPath: kp] = v } else { terrain.min[keyPath: kp] = v } }
+            get: { (showMax ? draft.max : draft.min)[keyPath: kp] },
+            set: { v in
+                var d = draft
+                if showMax { d.max[keyPath: kp] = v } else { d.min[keyPath: kp] = v }
+                setDraft(d)
+            }
         )
     }
 
     private func autoTier() {
-        var data = showMax ? terrain.max : terrain.min
+        var d = draft
+        var data = showMax ? d.max : d.min
         let states = fields.map { RegionLayerRegistry.state($0, in: data) }
         let tiered = RegionFieldSampler.autoTier(states)
         for (field, s) in zip(fields, tiered) where s.active {
@@ -200,16 +313,58 @@ struct TerrainDetailView: View {
             data[keyPath: field.elevation] = s.elevation
             if let g = field.gain { data[keyPath: g] = s.gain }
         }
-        if showMax { terrain.max = data } else { terrain.min = data }
+        if showMax { d.max = data } else { d.min = data }
+        setDraft(d)
     }
 
     private func smartMix() {
-        var mn = terrain.min
-        var mx = terrain.max
+        var d = draft
+        var mn = d.min
+        var mx = d.max
         var rng = SystemRandomNumberGenerator()
         SmartRegionMix.apply(min: &mn, max: &mx, using: &rng)
-        terrain.min = mn
-        terrain.max = mx
+        d.min = mn
+        d.max = mx
+        setDraft(d)
+    }
+
+    /// Randomizes every layer/field of the CURRENT section (both Min and Max) within the base
+    /// terrain's documented ranges — the per-section equivalent of the macOS randomize buttons.
+    private func randomizeSection() {
+        let base = BaseTerrain.shared
+        var d = draft
+        switch section {
+        case .general:
+            TerrainEditorOperations.randomizeRootScalars(
+                minData: &d.min, maxData: &d.max, refMin: base.min, refMax: base.max)
+        case .noise:
+            for (_, kp) in noiseLayers {
+                TerrainEditorOperations.randomizeUberLayer(
+                    min: &d.min[keyPath: kp], max: &d.max[keyPath: kp],
+                    refMin: base.min[keyPath: kp], refMax: base.max[keyPath: kp])
+            }
+        case .grid:
+            for (_, kp) in gridLayers {
+                TerrainEditorOperations.randomizeGrid(
+                    min: &d.min[keyPath: kp], max: &d.max[keyPath: kp],
+                    refMin: base.min[keyPath: kp], refMax: base.max[keyPath: kp])
+            }
+        case .features:
+            for (_, kp) in featureLayers {
+                TerrainEditorOperations.randomizeFeature(
+                    min: &d.min[keyPath: kp], max: &d.max[keyPath: kp],
+                    refMin: base.min[keyPath: kp], refMax: base.max[keyPath: kp])
+            }
+        case .caves:
+            for (_, kp) in caveLayers {
+                TerrainEditorOperations.randomizeFeature(
+                    min: &d.min[keyPath: kp], max: &d.max[keyPath: kp],
+                    refMin: base.min[keyPath: kp], refMax: base.max[keyPath: kp])
+            }
+        case .regions:
+            break // the Region mixer randomizes via its own Smart Mix
+        }
+        setDraft(d)
     }
 }
 

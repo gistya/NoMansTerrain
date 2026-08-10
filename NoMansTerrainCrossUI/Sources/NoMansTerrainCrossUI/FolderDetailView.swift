@@ -39,7 +39,8 @@ struct FolderDetailView: View {
                     }
                 }
             }
-            .frame(width: 600)
+            // Fill the detail pane instead of a fixed 600pt, which clipped the slot controls.
+            .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
         }
         .padding(12)
