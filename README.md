@@ -45,6 +45,31 @@ fly down to.
 
 ---
 
+## 0. How to install mods
+
+### macOS
+
+1. Install https://github.com/Enki013/nms-mod-installer-macos (follow instructions there)
+2. Make a folder for your terrain mod. It can be named whatever you want: "MyTerrainMod"
+3. Inside your mod folder, make these subfolders: "METADATA/SIMULATION/SOLARSYSTEM/"
+4. Put your terrain file in the SOLARSYSTEM folder. The terrain file must be called voxelgeneratorsettings.MXML
+5. Open terminal and run: `nms-mod-installer install ~/path/to/MyTerrainMod`
+6. Now run No Man's Sky and your mod will be installed.
+
+### Windows
+
+1. Install MBINCompiler from here https://github.com/monkeyman192/MBINCompiler
+2. Make a folder for your terrain mod. It can be named whatever you want: "MyTerrainMod"
+3. Inside your mod folder, make these subfolders: "METADATA/SIMULATION/SOLARSYSTEM/"
+4. Put your terrain file in the SOLARSYSTEM folder. The terrain file must be called voxelgeneratorsettings.MXML
+5. Drag your terrain file onto MBINCompiler so that it makes voxelgeneratorsettings.MBIN
+6. Put your mod folder into No Man's Sky\GAMEDATA\MODS\
+7. Now run No Man's Sky and your mod will be installed.
+
+If you have any difficulties then try asking the NMS Modding discord. (Google it)
+
+---
+
 ## 1. The big picture: how NMS builds a planet
 
 NMS terrain is **not** a heightmap. It's a **voxel density field** sampled in 3D, which
